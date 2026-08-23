@@ -320,13 +320,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                 {/* More Options */}
                 <div className="space-y-2 pt-2 border-t">
                   <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Explore</h3>
-                  {moreNavItems
-                    .filter((item) => {
-                      // Filter out admin items for non-admin users
-                      if (item.adminOnly && (!user || user.role !== 'admin')) return false;
-                      return true;
-                    })
-                    .map((item) => (
+                  {moreNavItems.map((item) => (
                       <button
                         key={item.value}
                         onClick={() => handleNavigate(item.value)}
