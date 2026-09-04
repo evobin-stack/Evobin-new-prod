@@ -29,7 +29,7 @@ interface TeamMember {
 export function AboutPage({ onNavigate }: AboutPageProps) {
 
   const teamMembers: TeamMember[] = [
-    
+
     {
       name: "Syeda Sumaiya Afreen",
       position: "Principal Investigator",
@@ -40,7 +40,7 @@ export function AboutPage({ onNavigate }: AboutPageProps) {
       email: "alex@ewaste.com"
     },
     {
-      name: "Gumpula Aravind",
+      name: "Gulam Mahabub Subhani",
       position: "Co Principal Investigator",
       image: adm3,
       bio: "Specializes in React, Node.js, and system architecture. 8+ years of experience building scalable web applications.",
@@ -336,16 +336,16 @@ export function AboutPage({ onNavigate }: AboutPageProps) {
             We're always happy to discuss our platform, share insights, or explore collaboration opportunities.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-white text-primary hover:bg-white/90"
               onClick={() => window.location.href = 'mailto:team@ewaste.com'}
             >
               <Mail className="mr-2 h-5 w-5" />
               Contact Our Team
             </Button>
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               variant="outline"
               className="bg-transparent border-white text-white hover:bg-white/10"
               onClick={() => onNavigate('landing')}
