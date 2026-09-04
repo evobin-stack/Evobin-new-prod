@@ -90,12 +90,12 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
               <span className="text-white font-bold text-2xl">E♻</span>
             </div> */}
             <div className="w-12 h-12 flex items-center justify-center">
-  <img
-    src="/assets/logo.png"
-    alt="EvoBin Logo"
-    className="w-full h-full object-contain"
-  />
-</div>
+              <img
+                src="/assets/logo.png"
+                alt="EvoBin Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
             <span className="text-3xl font-bold text-foreground">EvoBin</span>
           </div>
           <h2 className="mb-6">
@@ -126,8 +126,8 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
           <CardHeader className="text-center">
             <CardTitle>{isLogin ? "Welcome Back" : "Create Account"}</CardTitle>
             <CardDescription>
-              {isLogin 
-                ? "Enter your credentials to access your account" 
+              {isLogin
+                ? "Enter your credentials to access your account"
                 : "Sign up to start your sustainability journey"
               }
             </CardDescription>
@@ -139,7 +139,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
                 <div className="space-y-2">
@@ -251,8 +251,8 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
                 </div>
               )}
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-primary hover:bg-primary/90"
                 disabled={isLoading}
               >
