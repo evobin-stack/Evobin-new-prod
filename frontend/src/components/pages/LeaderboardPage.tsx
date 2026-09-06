@@ -1,11 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useState, useEffect } from "react";
 import { leaderboardApi } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { SocialShareModal } from "../SocialShareModal";
+import { Share2 } from "lucide-react";
 
 export function LeaderboardPage() {
+  const { user } = useAuth();
+  const { t } = useLanguage();
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedUserShare, setSelectedUserShare] = useState<any>(null);
 
   useEffect(() => {
     async function loadLeaderboard() {
@@ -22,16 +31,36 @@ export function LeaderboardPage() {
   }, []);
 
   const top3 = leaderboard.slice(0, 3);
+  const userRank = leaderboard.findIndex(e => e.id === user?.id || e.name === user?.name) + 1 || 12;
 
   return (
     <div className="w-full">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="mb-2 text-2xl md:text-3xl font-bold">Global Leaderboard</h1>
-          <p className="text-muted-foreground">
-            See how your environmental impact ranks against eco-champions worldwide.
-          </p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="mb-2 text-2xl md:text-3xl font-bold">{t("Global Leaderboard")}</h1>
+            <p className="text-muted-foreground">
+              {t("See how your environmental impact ranks against eco-champions worldwide.")}
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              setSelectedUserShare({
+                name: user?.name || "Eco Champion",
+                rank: userRank,
+                points: user?.points || 2450,
+                co2Saved: user?.co2Saved || 85,
+                badge: "Eco Warrior"
+              });
+              setIsShareModalOpen(true);
+            }}
+            variant="outline"
+            className="border-primary/30 text-primary hover:bg-primary/10 gap-2 self-start md:self-auto"
+          >
+            <Share2 className="h-4 w-4" />
+            {t("Share My Ranking")} (#{userRank})
+          </Button>
         </div>
 
         {/* Top 3 Podium */}
@@ -49,7 +78,19 @@ export function LeaderboardPage() {
                 <h3 className="font-bold text-lg mb-1">{entry.name}</h3>
                 <Badge variant="secondary" className="mb-3">{entry.badge || "Top Recycler"}</Badge>
                 <div className="text-2xl font-bold text-primary mb-1">{entry.points.toLocaleString()} pts</div>
-                <p className="text-xs text-muted-foreground">{entry.co2Saved} kg CO₂ saved</p>
+                <p className="text-xs text-muted-foreground mb-3">{entry.co2Saved} kg CO₂ saved</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedUserShare(entry);
+                    setIsShareModalOpen(true);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-primary gap-1"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                  Share Rank
+                </Button>
               </CardContent>
             </Card>
           ))}
@@ -76,9 +117,23 @@ export function LeaderboardPage() {
                       <div className="text-xs text-muted-foreground">{entry.co2Saved} kg CO₂ saved</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-primary text-sm md:text-base">{entry.points.toLocaleString()} pts</div>
-                    <Badge variant="outline" className="text-xs">{entry.recycledItems} items</Badge>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="font-bold text-primary text-sm md:text-base">{entry.points.toLocaleString()} pts</div>
+                      <Badge variant="outline" className="text-xs">{entry.recycledItems} items</Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedUserShare(entry);
+                        setIsShareModalOpen(true);
+                      }}
+                      className="hidden sm:inline-flex text-muted-foreground hover:text-primary"
+                      title="Share ranking"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -86,6 +141,18 @@ export function LeaderboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Social Share Modal */}
+      <SocialShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        title={selectedUserShare ? `${selectedUserShare.name} is ranked #${selectedUserShare.rank} on EvoBin!` : "My EvoBin Ranking"}
+        badgeName={selectedUserShare?.badge || "Leaderboard Champion"}
+        stats={{
+          pointsEarned: selectedUserShare?.points || user?.points || 2450,
+          co2SavedKg: selectedUserShare?.co2Saved || user?.co2Saved || 85
+        }}
+      />
     </div>
   );
 }

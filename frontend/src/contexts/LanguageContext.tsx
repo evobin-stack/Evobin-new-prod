@@ -6,7 +6,7 @@ export type Language = 'en' | 'hi' | 'te';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, fallback?: string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -25,10 +25,11 @@ const translations: Record<Language, Record<string, string>> = {
     // ========== NAVIGATION ==========
     'nav.dashboard': 'Dashboard',
     'nav.upload': 'Upload',
-    'nav.map': 'Map',
+    'nav.map': 'Map & Centers',
     'nav.rewards': 'Rewards',
     'nav.community': 'Community',
-    'nav.education': 'Education',
+    'nav.education': 'Education & Quiz',
+    'nav.educationShort': 'Education',
     'nav.leaderboard': 'Leaderboard',
     'nav.events': 'Events',
     'nav.analytics': 'Analytics',
@@ -42,6 +43,14 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.explore': 'Explore',
     'nav.navigation': 'Navigation',
     'nav.account': 'Account',
+    'nav.home': 'Home',
+    'nav.aboutUs': 'About Us',
+    'nav.dispatchHub': 'Dispatch Hub',
+    'nav.corporatePortal': 'Corporate Portal',
+    'nav.profileSettings': 'Profile & Settings',
+    'nav.analyticsReports': 'Analytics & Reports',
+    'nav.educationGuides': 'Education & Guides',
+    'nav.adminPanel': 'Admin Panel',
     
     // ========== LANDING PAGE ==========
     'landing.hero.badge': 'AI-Powered Solution',
@@ -541,14 +550,15 @@ const translations: Record<Language, Record<string, string>> = {
     // ========== नेविगेशन ==========
     'nav.dashboard': 'डैशबोर्ड',
     'nav.upload': 'अपलोड',
-    'nav.map': 'मानचित्र',
+    'nav.map': 'मानचित्र व केंद्र',
     'nav.rewards': 'पुरस्कार',
     'nav.community': 'समुदाय',
-    'nav.education': 'शिक्षा',
+    'nav.education': 'शिक्षा और प्रश्नोत्तरी',
+    'nav.educationShort': 'शिक्षा',
     'nav.leaderboard': 'लीडरबोर्ड',
     'nav.events': 'कार्यक्रम',
     'nav.analytics': 'विश्लेषण',
-    'nav.admin': 'एडमिन',
+    'nav.admin': 'व्यवस्थापक',
     'nav.profile': 'प्रोफाइल',
     'nav.notifications': 'सूचनाएं',
     'nav.findCenters': 'केंद्र खोजें',
@@ -558,6 +568,14 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.explore': 'एक्सप्लोर',
     'nav.navigation': 'नेविगेशन',
     'nav.account': 'खाता',
+    'nav.home': 'होम',
+    'nav.aboutUs': 'हमारे बारे में',
+    'nav.dispatchHub': 'डिस्पैच हब',
+    'nav.corporatePortal': 'कॉर्पोरेट पोर्टल',
+    'nav.profileSettings': 'प्रोफाइल और सेटिंग्स',
+    'nav.analyticsReports': 'विश्लेषण और रिपोर्ट',
+    'nav.educationGuides': 'शिक्षा और गाइड',
+    'nav.adminPanel': 'व्यवस्थापक पैनल',
     
     // ========== लैंडिंग पेज ==========
     'landing.hero.badge': 'एआई-संचालित समाधान',
@@ -1057,12 +1075,13 @@ const translations: Record<Language, Record<string, string>> = {
     // ========== నావిగేషన్ ==========
     'nav.dashboard': 'డాష్‌బోర్డ్',
     'nav.upload': 'అప్‌లోడ్',
-    'nav.map': 'మ్యాప్',
-    'nav.rewards': 'రివార్డ్స్',
-    'nav.community': 'కమ్యూనిటీ',
-    'nav.education': 'విద్య',
+    'nav.map': 'కేంద్రాల మ్యాప్',
+    'nav.rewards': 'రివార్డులు',
+    'nav.community': 'సంఘం',
+    'nav.education': 'విద్య & క్విజ్',
+    'nav.educationShort': 'విద్య',
     'nav.leaderboard': 'లీడర్‌బోర్డ్',
-    'nav.events': 'ఈవెంట్స్',
+    'nav.events': 'ఈవెంట్లు',
     'nav.analytics': 'విశ్లేషణలు',
     'nav.admin': 'అడ్మిన్',
     'nav.profile': 'ప్రొఫైల్',
@@ -1074,6 +1093,14 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.explore': 'అన్వేషించండి',
     'nav.navigation': 'నావిగేషన్',
     'nav.account': 'ఖాతా',
+    'nav.home': 'హోమ్',
+    'nav.aboutUs': 'మా గురించి',
+    'nav.dispatchHub': 'డిస్పాచ్ హబ్',
+    'nav.corporatePortal': 'కార్పొరేట్ పోర్టల్',
+    'nav.profileSettings': 'ప్రొఫైల్ & సెట్టింగ్‌లు',
+    'nav.analyticsReports': 'విశ్లేషణలు & నివేదికలు',
+    'nav.educationGuides': 'విద్య & గైడ్‌లు',
+    'nav.adminPanel': 'అడ్మిన్ ప్యానెల్',
     
     // ========== ల్యాండింగ్ పేజీ ==========
     'landing.hero.badge': 'AI-శక్తివంతమైన పరిష్కారం',
@@ -1570,6 +1597,211 @@ const translations: Record<Language, Record<string, string>> = {
   },
 };
 
+// Reverse index from English text to translation keys
+const enTextToKeyMap = new Map<string, string>();
+if (translations.en) {
+  for (const [key, text] of Object.entries(translations.en)) {
+    if (text && typeof text === 'string') {
+      enTextToKeyMap.set(text.trim().toLowerCase(), key);
+    }
+  }
+}
+
+// Direct common phrase mappings for phrases used in JSX
+const directPhraseMap: Record<Language, Record<string, string>> = {
+  en: {},
+  hi: {
+    "dashboard": "डैशबोर्ड",
+    "upload": "अपलोड",
+    "map": "मानचित्र व केंद्र",
+    "map & centers": "मानचित्र व केंद्र",
+    "rewards": "पुरस्कार",
+    "community": "समुदाय",
+    "education": "शिक्षा और गाइड",
+    "education & quiz": "शिक्षा और प्रश्नोत्तरी",
+    "education & guides": "शिक्षा और गाइड",
+    "leaderboard": "लीडरबोर्ड",
+    "events": "कार्यक्रम",
+    "analytics": "विश्लेषण",
+    "detailed analytics": "विस्तृत विश्लेषण",
+    "detailed analytics & impact": "विस्तृत विश्लेषण और प्रभाव",
+    "overview": "अवलोकन",
+    "total e-waste recycled": "कुल पुनर्नवीनीकरण ई-कचरा",
+    "carbon footprint saved": "बचाया गया कार्बन पदचिह्न",
+    "total points earned": "कुल अर्जित अंक",
+    "items processed": "संसाधित वस्तुएं",
+    "carbon footprint tracker": "कार्बन फुटप्रिंट ट्रैकर",
+    "tailored next actions": "अनुकूलित अगले कदम",
+    "recent activity": "हाल की गतिविधि",
+    "achievements": "उपलब्धियां",
+    "safe disassembly guides": "सुरक्षित डिस्सेप्लर गाइड",
+    "environmental impact assessment": "पर्यावरणीय प्रभाव आकलन",
+    "global leaderboard": "ग्लोबल लीडरबोर्ड",
+    "rewards & gamification": "पुरस्कार और गेमिंग",
+    "reward catalogue": "पुरस्कार सूची",
+    "redemptions": "रिडेम्पशन इतिहास",
+    "tier perks": "स्तर के लाभ",
+    "community & stories": "समुदाय और कहानियां",
+    "find certified centers": "प्रमाणित केंद्र खोजें",
+    "find recycling centers": "रीसाइक्लिंग केंद्र खोजें",
+    "upload e-waste": "ई-कचरा अपलोड करें",
+    "data privacy and security": "डेटा गोपनीयता और सुरक्षा",
+    "sustainability tips": "स्थिरता सुझाव",
+    "learn more": "और जानें",
+    "share impact": "प्रभाव साझा करें",
+    "share my points": "मेरे अंक साझा करें",
+    "share my ranking": "मेरी रैंकिंग साझा करें",
+    "share rank": "रैंक साझा करें",
+    "quick actions": "त्वरित क्रियाएं",
+    "days active": "सक्रिय दिन",
+    "streak days": "लगातार दिन",
+    "badges": "बैज",
+    "redeem": "रिडीम करें",
+    "redeeming...": "रिडीम हो रहा है...",
+    "submit feedback": "प्रतिक्रिया दें",
+    "publish story": "कहानी पोस्ट करें",
+    "join challenge": "चुनौती में शामिल हों",
+    "joined": "शामिल हो गए",
+    "download certificate": "प्रमाणपत्र डाउनलोड करें",
+    "export my data": "मेरा डेटा निर्यात करें",
+    "about us": "हमारे बारे में",
+    "quick links": "त्वरित लिंक",
+    "resources": "संसाधन",
+    "connect with us": "हमसे जुड़ें",
+    "all rights reserved": "सर्वाधिकार सुरक्षित",
+    "sign in": "साइन इन",
+    "sign up": "साइन अप",
+    "logout": "लॉग आउट",
+    "home": "होम",
+    "profile": "प्रोफाइल",
+    "settings": "सेटिंग्स",
+    "profile & settings": "प्रोफाइल और सेटिंग्स",
+    "reports": "रिपोर्ट",
+    "analytics & reports": "विश्लेषण और रिपोर्ट",
+    "admin panel": "व्यवस्थापक पैनल",
+    "search": "खोजें",
+    "filters": "फ़िल्टर",
+    "directions": "दिशा-निर्देश",
+    "review": "समीक्षा करें",
+    "monthly goal progress": "मासिक लक्ष्य प्रगति",
+    // Hardware & Device Vocabulary
+    "mouse": "माउस (Mouse)",
+    "computer mouse": "माउस",
+    "keyboard": "कीबोर्ड",
+    "laptop": "लैपटॉप",
+    "desktop": "डेस्कटॉप कंप्यूटर",
+    "smartphone": "स्मार्टफोन / मोबाइल",
+    "monitor": "मॉनिटर / स्क्रीन",
+    "tablet": "टैबलेट",
+    "printer": "प्रिंटर",
+    "brand": "ब्रांड",
+    "model": "मॉडल",
+    "device category": "डिवाइस श्रेणी",
+    "device type": "डिवाइस प्रकार",
+    "ai status": "AI स्थिति",
+    "ai results": "AI परिणाम",
+    "quick preview": "त्वरित पूर्वावलोकन",
+    "device details": "डिवाइस विवरण",
+    "confirm in step 2": "चरण 2 में पुष्टि करें",
+    "analyzed & verified": "विश्लेषित एवं सत्यापित"
+  },
+  te: {
+    "dashboard": "డాష్‌బోర్డ్",
+    "upload": "అప్‌లోడ్",
+    "map": "కేంద్రాల మ్యాప్",
+    "map & centers": "కేంద్రాల మ్యాప్",
+    "rewards": "రివార్డులు",
+    "community": "సంఘం",
+    "education": "విద్య & గైడ్‌లు",
+    "education & quiz": "విద్య & క్విజ్",
+    "education & guides": "విద్య & గైడ్‌లు",
+    "leaderboard": "లీడర్‌బోర్డ్",
+    "events": "ఈవెంట్లు",
+    "analytics": "విశ్లేషణలు",
+    "detailed analytics": "వివరణాత్మక విశ్లేషణలు",
+    "detailed analytics & impact": "వివరణాత్మక విశ్లేషణలు & ప్రభావం",
+    "overview": "అవలోకనం",
+    "total e-waste recycled": "మొత్తం రీసైకిల్ చేసిన ఇ-వ్యర్థాలు",
+    "carbon footprint saved": "సేవ్ చేసిన కార్బన్ పాదముద్ర",
+    "total points earned": "మొత్తం సంపాదించిన పాయింట్లు",
+    "items processed": "ప్రాసెస్ చేసిన అంశాలు",
+    "carbon footprint tracker": "కార్బన్ పాదముద్ర ట్రాకర్",
+    "tailored next actions": "తగిన తదుపరి చర్యలు",
+    "recent activity": "ఇటీవలి కార్యాచరణ",
+    "achievements": "విజయాలు",
+    "safe disassembly guides": "సురక్షిత విడదీసే గైడ్లు",
+    "environmental impact assessment": "పర్యావరణ ప్రభావ అంచనా",
+    "global leaderboard": "గ్లోబల్ లీడర్‌బోర్డ్",
+    "rewards & gamification": "రివార్డులు & గేమిఫికేషన్",
+    "reward catalogue": "రివార్డుల జాబితా",
+    "redemptions": "రిడెంప్షన్ చరిత్ర",
+    "tier perks": "శ్రేణి ప్రయోజనాలు",
+    "community & stories": "సంఘం & కథలు",
+    "find certified centers": "ధృవీకరించబడిన కేంద్రాలను కనుగొనండి",
+    "find recycling centers": "రీసైక్లింగ్ కేంద్రాలను కనుగొనండి",
+    "upload e-waste": "ఇ-వ్యర్థాలను అప్‌లోడ్ చేయండి",
+    "data privacy and security": "డేటా గోప్యత & భద్రత",
+    "sustainability tips": "స్థిరత్వ చిట్కాలు",
+    "learn more": "మరింత తెలుసుకోండి",
+    "share impact": "ప్రభావాన్ని పంచుకోండి",
+    "share my points": "నా పాయింట్లను పంచుకోండి",
+    "share my ranking": "నా ర్యాంకును పంచుకోండి",
+    "share rank": "ర్యాంకును పంచుకోండి",
+    "quick actions": "త్వరిత చర్యలు",
+    "days active": "యాక్టివ్ రోజులు",
+    "streak days": "స్ట్రీక్ రోజులు",
+    "badges": "బ్యాడ్జీలు",
+    "redeem": "రీడీమ్ చేయండి",
+    "redeeming...": "రీడీమ్ అవుతోంది...",
+    "submit feedback": "అభిప్రాయాన్ని సమర్పించండి",
+    "publish story": "కథను ప్రచురించండి",
+    "join challenge": "సవాలులో చేరండి",
+    "joined": "చేరారు",
+    "download certificate": "సర్టిఫికేట్ డౌన్‌లోడ్ చేయండి",
+    "export my data": "నా డేటాను ఎగుమతి చేయండి",
+    "about us": "మా గురించి",
+    "quick links": "త్వరిత లింకులు",
+    "resources": "వనరులు",
+    "connect with us": "మాతో కనెక్ట్ అవ్వండి",
+    "all rights reserved": "సర్వ హక్కులు రక్షించబడ్డాయి",
+    "sign in": "సైన్ ఇన్",
+    "sign up": "సైన్ అప్",
+    "logout": "లాగ్ అవుట్",
+    "home": "హోమ్",
+    "profile": "ప్రొఫైల్",
+    "settings": "సెట్టింగ్‌లు",
+    "profile & settings": "ప్రొఫైల్ & సెట్టింగ్‌లు",
+    "reports": "నివేదికలు",
+    "analytics & reports": "విశ్లేషణలు & నివేదికలు",
+    "admin panel": "అడ్మిన్ ప్యానెల్",
+    "search": "వెతకండి",
+    "filters": "ఫిల్టర్లు",
+    "directions": "దిశలు",
+    "review": "సమీక్ష",
+    "monthly goal progress": "నెలవారీ లక్ష్య పురోగతి",
+    // Hardware & Device Vocabulary
+    "mouse": "మౌస్ (Mouse)",
+    "computer mouse": "మౌస్",
+    "keyboard": "కీబోర్డ్",
+    "laptop": "ల్యాప్‌టాప్",
+    "desktop": "డెస్క్‌టాప్ కంప్యూటర్",
+    "smartphone": "స్మార్ట్‌ఫోన్ / మొబైల్",
+    "monitor": "మానిటర్ / స్క్రీన్",
+    "tablet": "టాబ్లెట్",
+    "printer": "ప్రింటర్",
+    "brand": "బ్రాండ్",
+    "model": "మోడల్",
+    "device category": "పరికర విభాగం",
+    "device type": "పరికర రకం",
+    "ai status": "AI స్థితి",
+    "ai results": "AI ఫలితాలు",
+    "quick preview": "త్వరిత ప్రివ్యూ",
+    "device details": "పరికర వివరాలు",
+    "confirm in step 2": "దశ 2 లో నిర్ధారించండి",
+    "analyzed & verified": "విశ్లేషించబడింది మరియు ధృవీకరించబడింది"
+  }
+};
+
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>('en');
 
@@ -1581,18 +1813,159 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, []);
 
-  // Translation function
-  const t = (key: string): string => {
-    return translations[language][key] || key;
+  // Translation function with smart fallback and reverse English key lookup
+  const t = (key: string, fallback?: string): string => {
+    if (!key) return '';
+
+    // 1. Direct dictionary key match in current language
+    if (translations[language] && translations[language][key]) {
+      return translations[language][key];
+    }
+
+    // 2. Direct phrase match (lowercase normalized)
+    const normalized = key.trim().toLowerCase();
+    if (directPhraseMap[language] && directPhraseMap[language][normalized]) {
+      return directPhraseMap[language][normalized];
+    }
+
+    // 3. Match against English dictionary value
+    const mappedKey = enTextToKeyMap.get(normalized);
+    if (mappedKey && translations[language] && translations[language][mappedKey]) {
+      return translations[language][mappedKey];
+    }
+
+    // 4. English fallback key
+    if (translations.en && translations.en[key]) {
+      return translations.en[key];
+    }
+
+    return fallback || key;
   };
+
+  // DOM Text Sanitizer & Corrector to fix inaccurate Google Translate outputs
+  useEffect(() => {
+    if (typeof document === 'undefined' || language === 'en') return;
+
+    const sanitizeMistranslations = () => {
+      // Natural native electronics replacements for bad Google Translate machine translations
+      const teCorrections: Record<string, string> = {
+        'ఎలుక': 'మౌస్',
+        'ఎలుకలు': 'మౌస్',
+        'నమూనా:': 'మోడల్:',
+        'నమూనా': 'మోడల్',
+        'నమూనాలు': 'మోడల్స్',
+        'కీలకబోర్డు': 'కీబోర్డ్',
+        'కీలక బోర్డు': 'కీబోర్డ్',
+        'ఇది': 'అప్‌లోడ్',
+        'ఇపుడు': 'కేంద్రాల మ్యాప్',
+        'ఇప్పుడు': 'కేంద్రాల మ్యాప్',
+        'డాష్ బోర్డ్': 'డాష్‌బోర్డ్',
+        'డ్యాష్‌బోర్డ్': 'డాష్‌బోర్డ్',
+        'డ్యాష్ బోర్డ్': 'డాష్‌బోర్డ్',
+        'విశ్లేషణ మరియు ధృవీకరణ చేయబడింది': 'విశ్లేషించబడింది మరియు ధృవీకరించబడింది'
+      };
+
+      const hiCorrections: Record<string, string> = {
+        'चूहा': 'माउस',
+        'चूहे': 'माउस',
+        'नमूना:': 'मॉडल:',
+        'नमूना': 'मॉडल',
+        'नमूने': 'मॉडल',
+        'कुंजीपटल': 'कीबोर्ड',
+        'डैश बोर्ड': 'डैशबोर्ड',
+        'स्मार्ट फोन': 'स्मार्टफोन',
+        'विश्लेषण एवं सत्यापन किया गया': 'विश्लेषित एवं सत्यापित',
+        'एआई स्थिति:': 'AI स्थिति:',
+        'पहचान की गई': 'पहचाना गया'
+      };
+
+      const corrections = language === 'te' ? teCorrections : language === 'hi' ? hiCorrections : {};
+
+      // Walk text nodes in body except scripts and styles
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: (node) => {
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            const tag = parent.tagName.toLowerCase();
+            if (tag === 'script' || tag === 'style' || tag === 'noscript') return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+
+      let currentNode = walker.nextNode();
+      while (currentNode) {
+        const text = currentNode.nodeValue;
+        if (text) {
+          const trimmed = text.trim();
+          if (corrections[trimmed]) {
+            currentNode.nodeValue = text.replace(trimmed, corrections[trimmed]);
+          } else {
+            // Check substrings
+            let updated = text;
+            for (const [bad, good] of Object.entries(corrections)) {
+              if (updated.includes(bad)) {
+                updated = updated.split(bad).join(good);
+              }
+            }
+            if (updated !== text) {
+              currentNode.nodeValue = updated;
+            }
+          }
+        }
+        currentNode = walker.nextNode();
+      }
+    };
+
+    // Run sanitizer immediately and repeatedly after Google Translate renders
+    sanitizeMistranslations();
+    const timer1 = setTimeout(sanitizeMistranslations, 600);
+    const timer2 = setTimeout(sanitizeMistranslations, 1200);
+    const timer3 = setTimeout(sanitizeMistranslations, 2500);
+
+    const observer = new MutationObserver(() => {
+      sanitizeMistranslations();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+      observer.disconnect();
+    };
+  }, [language]);
 
   // Set language and save to localStorage
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('preferredLanguage', lang);
     
+    // Set proper Google Translate cookies
+    if (lang === 'en') {
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname + ';';
+      document.cookie = 'googtrans=/en/en; path=/;';
+      document.cookie = 'googtrans=/en/en; path=/; domain=' + window.location.hostname + ';';
+    } else {
+      document.cookie = `googtrans=/en/${lang}; path=/;`;
+      document.cookie = `googtrans=/en/${lang}; path=/; domain=${window.location.hostname};`;
+      document.cookie = `googtrans=/en/${lang}; path=/; domain=.${window.location.hostname};`;
+    }
+
     // Update HTML lang attribute for accessibility
     document.documentElement.lang = lang;
+    
+    // Auto-reload so Google Translate runs completely on init without requiring manual user refresh
+    window.location.reload();
   };
 
   const value: LanguageContextType = {

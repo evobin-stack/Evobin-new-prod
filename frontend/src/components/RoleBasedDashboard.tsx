@@ -1,4 +1,5 @@
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { 
@@ -24,6 +25,7 @@ interface RoleBasedDashboardProps {
 
 export function RoleBasedDashboard({ onNavigate }: RoleBasedDashboardProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [adminStats, setAdminStats] = useState<any>(null);
 
   useEffect(() => {
@@ -44,15 +46,15 @@ export function RoleBasedDashboard({ onNavigate }: RoleBasedDashboardProps) {
       <div className="space-y-6">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-primary to-accent p-6 rounded-lg text-white">
-          <h2 className="mb-2">Welcome back, {user.name}! 👋</h2>
-          <p className="text-white/90">You're making a real difference for the environment.</p>
+          <h2 className="mb-2">{t("dashboard.welcome") || "Welcome back"}, {user.name}! 👋</h2>
+          <p className="text-white/90">{t("You're making a real difference for the environment.") || "You're making a real difference for the environment."}</p>
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>Total Points</CardDescription>
+              <CardDescription>{t("Total Points")}</CardDescription>
               <CardTitle className="text-2xl text-primary">{user.points || 0}</CardTitle>
             </CardHeader>
             <CardContent>
@@ -65,39 +67,39 @@ export function RoleBasedDashboard({ onNavigate }: RoleBasedDashboardProps) {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>Devices Recycled</CardDescription>
+              <CardDescription>{t("Devices Recycled")}</CardDescription>
               <CardTitle className="text-2xl">{user.totalRecycled || 0}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Activity className="h-4 w-4" />
-                <span>Total recycled</span>
+                <span>{t("Total recycled")}</span>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>CO₂ Saved</CardDescription>
+              <CardDescription>{t("CO2 Saved") || "CO₂ Saved"}</CardDescription>
               <CardTitle className="text-2xl text-accent">{user.co2Saved || 0} kg</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingUp className="h-4 w-4 text-accent" />
-                <span>Environmental impact</span>
+                <span>{t("Environmental impact")}</span>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>Badges Earned</CardDescription>
+              <CardDescription>{t("Badges Earned")}</CardDescription>
               <CardTitle className="text-2xl">{user.badges?.length || 0}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Award className="h-4 w-4" />
-                <span>Achievements</span>
+                <span>{t("Achievements")}</span>
               </div>
             </CardContent>
           </Card>
@@ -106,22 +108,22 @@ export function RoleBasedDashboard({ onNavigate }: RoleBasedDashboardProps) {
         {/* Quick Actions */}
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>What would you like to do today?</CardDescription>
+            <CardTitle>{t("Quick Actions")}</CardTitle>
+            <CardDescription>{t("What would you like to do today?")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Button onClick={() => onNavigate?.("upload")} className="h-auto flex flex-col gap-2 py-4">
                 <Activity className="h-6 w-6" />
-                <span>Upload Device</span>
+                <span>{t("Upload Device")}</span>
               </Button>
               <Button onClick={() => onNavigate?.("map")} variant="outline" className="h-auto flex flex-col gap-2 py-4">
                 <Target className="h-6 w-6" />
-                <span>Find Centers</span>
+                <span>{t("Find Centers")}</span>
               </Button>
               <Button onClick={() => onNavigate?.("rewards")} variant="outline" className="h-auto flex flex-col gap-2 py-4">
                 <Award className="h-6 w-6" />
-                <span>View Rewards</span>
+                <span>{t("View Rewards")}</span>
               </Button>
             </div>
           </CardContent>

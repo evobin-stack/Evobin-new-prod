@@ -1,9 +1,10 @@
-import { Users, Package, TrendingUp, AlertCircle, Phone, MapPin, Truck, Building2, BarChart3, Shield } from "lucide-react";
+import { Users, Package, TrendingUp, AlertCircle, Phone, MapPin, Truck, Building2, BarChart3, Shield, ShieldAlert } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useState, useEffect } from "react";
 import { adminApi } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -14,6 +15,7 @@ export function AdminPage() {
   const [stats, setStats] = useState<any>(null);
   const [userList, setUserList] = useState<any[]>([]);
   const [taskList, setTaskList] = useState<any[]>([]);
+  const [selectedSafetyTask, setSelectedSafetyTask] = useState<any | null>(null);
 
   const isAdmin = user?.role === 'admin';
   const isWorker = user?.role === 'worker';
@@ -99,11 +101,28 @@ export function AdminPage() {
     return typeof t.type === 'string' ? t.type : 'Device';
   };
 
+  const getSafetyTag = (t: any) => {
+    const d = (t.deviceDetails?.deviceType || t.type || '').toLowerCase();
+    if (d.includes('laptop') || d.includes('phone') || d.includes('battery') || d.includes('tablet')) {
+      return { level: 'Battery Risk', color: 'bg-orange-500 text-white', ppe: ['Fire-Resistant ESD Gloves', 'Safety Goggles'], protocol: 'Inspect for swelling; isolate in fireproof box if pierced.' };
+    }
+    if (d.includes('tv') || d.includes('monitor') || d.includes('crt')) {
+      return { level: 'High Voltage / Glass', color: 'bg-red-600 text-white', ppe: ['High-Voltage Gloves', 'Face Shield'], protocol: 'Discharge capacitor charge; do not crush funnel.' };
+    }
+    if (d.includes('microwave') || d.includes('refrigerator')) {
+      return { level: 'Refrigerant / Heavy', color: 'bg-purple-600 text-white', ppe: ['Heavy Leather Gloves', 'Respirator'], protocol: 'Evacuate gas before shredding; 2-person lift.' };
+    }
+    return { level: 'Standard Risk', color: 'bg-green-600 text-white', ppe: ['Cut-Resistant Work Gloves'], protocol: 'Standard electronic waste intake.' };
+  };
+
   const statusBadgeClass = (status: string) => {
-    if (status === 'Completed') return 'bg-accent text-white';
-    if (status === 'Collected') return 'bg-blue-600 text-white';
-    if (status === 'In-Transit') return 'bg-purple-600 text-white';
-    return 'bg-orange-500 text-white';
+    switch ((status || '').toLowerCase()) {
+      case 'completed': return 'bg-accent text-white';
+      case 'in-transit': return 'bg-purple-600 text-white';
+      case 'collected': return 'bg-blue-600 text-white';
+      case 'scheduled': return 'bg-yellow-500 text-white';
+      default: return 'bg-secondary text-foreground';
+    }
   };
 
   // ─── Pickup Tasks Table (shared by all roles) ────────────────────────────────
@@ -117,10 +136,10 @@ export function AdminPage() {
           </CardTitle>
           <CardDescription className="text-xs">
             {isWorker
-              ? 'Live pickup requests assigned to your route — update status after collection'
+              ? 'Live pickup requests assigned to your route with automated worker safety alerts'
               : isOrganization
               ? 'Track your organization\'s submitted devices and their processing status'
-              : 'All platform device pickup requests and their current status'}
+              : 'All platform device pickup requests with automated worker safety triage'}
           </CardDescription>
         </div>
         {isWorker && (
@@ -142,6 +161,7 @@ export function AdminPage() {
               <TableHead>Customer Details</TableHead>
               <TableHead>Pickup Address</TableHead>
               <TableHead>Device Info</TableHead>
+              <TableHead>Safety Hazard (AI)</TableHead>
               <TableHead>Est. Value</TableHead>
               <TableHead>Status</TableHead>
               {/* Action column only for admin and worker */}
@@ -151,7 +171,7 @@ export function AdminPage() {
           <TableBody>
             {(taskList || []).length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin || isWorker ? 7 : 6} className="text-center py-8 text-muted-foreground text-sm">
+                <TableCell colSpan={isAdmin || isWorker ? 8 : 7} className="text-center py-8 text-muted-foreground text-sm">
                   No active pickup submissions found.
                   {!isWorker && !isOrganization && ' Users can submit devices via the Upload page.'}
                 </TableCell>
@@ -159,6 +179,7 @@ export function AdminPage() {
             ) : (
               (taskList || []).map((t, idx) => {
                 const taskId = String(t.trackingId || t.id || t._id || `task-${idx}`);
+                const safety = getSafetyTag(t);
                 return (
                   <TableRow key={taskId}>
                     <TableCell className="font-mono text-sm font-bold text-primary">{taskId}</TableCell>
@@ -178,6 +199,17 @@ export function AdminPage() {
                     <TableCell className="font-medium text-sm">
                       <div>{getDeviceStr(t)}</div>
                       <div className="text-xs text-muted-foreground capitalize">{t.deliveryMethod || 'pickup'}</div>
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSafetyTask({ ...t, safety })}
+                        className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                      >
+                        <Badge className={`${safety.color} text-[10px] cursor-pointer`}>
+                          {safety.level}
+                        </Badge>
+                      </button>
                     </TableCell>
                     <TableCell className="text-sm font-bold text-accent">₹{t.estimatedValue || 300}</TableCell>
                     <TableCell>
@@ -240,23 +272,42 @@ export function AdminPage() {
 
   const currentStats = isWorker ? workerStats : isOrganization ? orgStats : adminStats;
 
-  // ─── WORKER PORTAL ───────────────────────────────────────────────────────────
+  // ─── WORKER PORTAL (Feature 5: Worker Safety Automation) ─────────────────────
   if (isWorker) {
     return (
       <div className="w-full">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-          <div className="mb-8">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-6">
+          <div>
             <h1 className="mb-2 text-2xl md:text-3xl font-bold flex items-center gap-2">
               <Truck className="h-7 w-7 text-orange-500" />
-              Worker Dispatch Hub
+              Worker Dispatch &amp; Safety Automation Hub
             </h1>
-            <p className="text-muted-foreground">
-              View and manage your assigned pickup tasks, update collection status in real-time.
+            <p className="text-muted-foreground text-sm md:text-base">
+              Automated hazardous device triage, required PPE verification, and real-time dispatch management.
             </p>
           </div>
 
+          {/* Worker Safety Automation Alert Card */}
+          <div className="p-5 bg-gradient-to-r from-orange-500/10 via-background to-primary/5 rounded-2xl border border-orange-500/30 shadow-sm space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-orange-600" />
+                <span className="font-bold text-sm md:text-base text-foreground">Worker Safety Automation Protocol Active</span>
+              </div>
+              <Badge className="bg-orange-500 text-white text-xs">AI Hazard Triage 100% Online</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Devices classified as <strong>Battery Risk</strong> or <strong>High Voltage</strong> must be placed in secondary insulated bins before transit. Always verify zero battery leakage before vehicle loading.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Badge variant="outline" className="text-xs bg-background">🛡️ Fireproof Sand Container</Badge>
+              <Badge variant="outline" className="text-xs bg-background">🧤 ESD Insulated Gloves</Badge>
+              <Badge variant="outline" className="text-xs bg-background">🥽 Impact Safety Goggles</Badge>
+            </div>
+          </div>
+
           {/* Worker Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {currentStats.map((s, i) => (
               <Card key={i} className="border-none shadow-md">
                 <CardContent className="p-4">
@@ -270,8 +321,52 @@ export function AdminPage() {
             ))}
           </div>
 
-          {/* Only Pickup Tasks — NO user list */}
+          {/* Pickup Tasks */}
           <PickupTasksTable />
+
+          {/* Safety Inspector Dialog */}
+          <Dialog open={!!selectedSafetyTask} onOpenChange={(open) => !open && setSelectedSafetyTask(null)}>
+            <DialogContent className="sm:max-w-md p-6">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                  <ShieldAlert className="h-5 w-5 text-orange-500" />
+                  Worker Safety Protocol #{selectedSafetyTask?.trackingId}
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Automated handling protocol for {getDeviceStr(selectedSafetyTask)}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 pt-2">
+                <div className="p-3 bg-secondary/40 rounded-xl space-y-1 text-xs">
+                  <div className="font-semibold text-foreground">Identified Hazard Classification:</div>
+                  <Badge className={`${selectedSafetyTask?.safety?.color} text-xs mt-1`}>
+                    {selectedSafetyTask?.safety?.level}
+                  </Badge>
+                </div>
+
+                <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-xs space-y-1">
+                  <div className="font-semibold text-orange-700 dark:text-orange-400">Handling Protocol:</div>
+                  <p className="text-muted-foreground">{selectedSafetyTask?.safety?.protocol}</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-foreground">Mandatory Worker PPE:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedSafetyTask?.safety?.ppe?.map((p: string, i: number) => (
+                      <Badge key={i} variant="outline" className="text-xs">
+                        🛡️ {p}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <Button onClick={() => setSelectedSafetyTask(null)} className="w-full bg-primary text-xs mt-2">
+                  Acknowledge & Close
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     );

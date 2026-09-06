@@ -2,6 +2,7 @@ import { Linkedin, Mail, Users, Heart, Code2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
+import { useLanguage } from "../../contexts/LanguageContext";
 import dev1 from "/assets/dev1.jpg";
 import dev2 from "/assets/dev2.jpg";
 import dev3 from "/assets/dev3.jpg";
@@ -27,6 +28,7 @@ interface TeamMember {
 }
 
 export function AboutPage({ onNavigate }: AboutPageProps) {
+  const { t } = useLanguage();
 
   const teamMembers: TeamMember[] = [
 
@@ -128,9 +130,9 @@ export function AboutPage({ onNavigate }: AboutPageProps) {
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-6">
               <Users className="h-5 w-5" />
-              <span className="font-semibold">Meet Our Team</span>
+              <span className="font-semibold">{t("About Us") || "Meet Our Team"}</span>
             </div>
-            <h1 className="mb-6">The Minds Behind the Platform</h1>
+            <h1 className="mb-6">{t("The Minds Behind the Platform") || "The Minds Behind the Platform"}</h1>
             <p className="text-xl text-muted-foreground mb-8">
               A passionate team of developers, designers, and engineers dedicated to creating innovative solutions for sustainable e-waste management.
             </p>

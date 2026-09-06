@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
 from app.database import db
+from app.auth_utils import get_current_user
 from typing import Optional
+from datetime import datetime
+import uuid
 
 router = APIRouter()
 
@@ -30,6 +33,19 @@ DEFAULT_CENTERS = [
         "openHours": "10:00 AM - 06:00 PM",
         "acceptedTypes": ["TVs", "Refrigerators", "Washing Machines", "Microwaves"],
         "coordinates": {"lat": 17.4156, "lng": 78.4347}
+    },
+    {
+        "id": "cnt-3",
+        "_id": "cnt-3",
+        "name": "Circular City Electronics Depot",
+        "address": "Phase 2, Kukatpally Industrial Area, Hyderabad",
+        "phone": "+91 98765 77665",
+        "rating": 4.9,
+        "reviewCount": 210,
+        "distance": "5.4 km",
+        "openHours": "08:30 AM - 06:30 PM",
+        "acceptedTypes": ["All Electronics", "Batteries", "Industrial Servers", "Appliances"],
+        "coordinates": {"lat": 17.4849, "lng": 78.4138}
     }
 ]
 
@@ -87,13 +103,41 @@ async def get_center_details(id: str):
         print("DB operation skipped in get_center_details:", err)
     return {"data": DEFAULT_CENTERS[0]}
 
+@router.post("/feedback")
 @router.post("/{id}/review")
-async def submit_center_review(id: str, review: dict):
+async def submit_feedback_and_rating(
+    feedback: dict,
+    id: Optional[str] = "general",
+    user = Depends(get_current_user)
+):
+    user_id = str(user.get("_id", user.get("id"))) if user else "guest"
+    user_name = user.get("name", "Eco User") if user else "Anonymous Recycler"
+
+    record = {
+        "id": f"fb-{uuid.uuid4().hex[:6]}",
+        "targetId": id or feedback.get("targetId", "general"),
+        "targetType": feedback.get("targetType", "recommendation"), # "recommendation", "center", "disassembly"
+        "rating": feedback.get("rating", 5),
+        "accuracyRating": feedback.get("accuracyRating", 5),
+        "serviceRating": feedback.get("serviceRating", 5),
+        "comments": feedback.get("feedback") or feedback.get("comment", ""),
+        "userId": user_id,
+        "userName": user_name,
+        "createdAt": datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+    }
+
     try:
-        await db.centers.update_one(
-            {"$or": [{"id": id}, {"_id": id}]},
-            {"$inc": {"reviewCount": 1}}
-        )
+        await db.feedback_ratings.insert_one(record)
+        if id and id != "general":
+            await db.centers.update_one(
+                {"$or": [{"id": id}, {"_id": id}]},
+                {"$inc": {"reviewCount": 1}}
+            )
     except Exception as err:
-        print("DB operation skipped in submit_center_review:", err)
-    return {"message": "Review submitted successfully"}
+        print("DB operation skipped in submit_feedback_and_rating:", err)
+
+    return {
+        "success": True,
+        "message": "Feedback submitted successfully! This helps refine our recommendation algorithm.",
+        "data": record
+    }

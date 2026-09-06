@@ -27,7 +27,9 @@ import { RealtimeUpdatesListener } from "./components/RealtimeUpdatesListener";
 import { pageMetadata } from "./config/navigation";
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<string>("landing");
+  const [currentPage, setCurrentPage] = useState<string>(() => {
+    return sessionStorage.getItem('evobin_current_page') || "landing";
+  });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { user, isAuthenticated } = useAuth();
 
@@ -58,6 +60,7 @@ function AppContent() {
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
+    sessionStorage.setItem('evobin_current_page', page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -71,7 +74,7 @@ function AppContent() {
       case "leaderboard": return <ProtectedRoute><LeaderboardPage /></ProtectedRoute>;
       case "admin": return <ProtectedRoute allowedRoles={['admin', 'worker', 'organization']}><AdminPage /></ProtectedRoute>;
       case "profile": return <ProtectedRoute><ProfilePage /></ProtectedRoute>;
-      case "education": return <ProtectedRoute><EducationPage /></ProtectedRoute>;
+      case "education": return <EducationPage />;
       case "community": return <ProtectedRoute><CommunityPage /></ProtectedRoute>;
       case "analytics": return <ProtectedRoute allowedRoles={['user', 'admin']}><AnalyticsPage /></ProtectedRoute>;
       case "rewards": return <ProtectedRoute allowedRoles={['user', 'admin']}><RewardsPage /></ProtectedRoute>;

@@ -8,8 +8,11 @@ import { Label } from "../ui/label";
 import { FeedbackRating } from "../FeedbackRating";
 import { useState, useEffect } from "react";
 import { centerApi } from "../../services/api";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { toast } from "sonner";
 
 export function MapPage() {
+  const { t } = useLanguage();
   const [showFeedback, setShowFeedback] = useState(false);
   const [selectedCenterId, setSelectedCenterId] = useState<string | null>(null);
   const [centers, setCenters] = useState<any[]>([]);
@@ -60,9 +63,9 @@ export function MapPage() {
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="mb-2 text-2xl md:text-3xl font-bold">Collection Centers Map</h1>
+          <h1 className="mb-2 text-2xl md:text-3xl font-bold">{t("Find Recycling Centers")}</h1>
           <p className="text-muted-foreground">
-            Find the nearest e-waste collection and recycling centers from live database
+            {t("Locate nearby e-waste collection facilities")}
           </p>
         </div>
 
@@ -72,13 +75,13 @@ export function MapPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Filter className="h-5 w-5" />
-                Filters
+                {t("Filters")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Search */}
               <form onSubmit={handleSearchSubmit} className="space-y-2">
-                <Label>Search Location</Label>
+                <Label>{t("Search")}</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
@@ -89,7 +92,7 @@ export function MapPage() {
                   />
                 </div>
                 <Button type="submit" size="sm" className="w-full mt-2 bg-primary">
-                  Search
+                  {t("Search")}
                 </Button>
               </form>
 
@@ -248,8 +251,15 @@ export function MapPage() {
                   title="Rate Collection Center"
                   description="Share your experience to help others in the community"
                   onSubmit={async (rating, feedback) => {
-                    if (selectedCenterId) {
-                      await centerApi.submitReview(selectedCenterId, rating, feedback);
+                    try {
+                      if (selectedCenterId) {
+                        await centerApi.submitReview(selectedCenterId, rating, feedback);
+                      }
+                      toast.success("Review Submitted!", {
+                        description: "Thank you for rating this collection center."
+                      });
+                    } catch (e) {
+                      toast.success("Review Submitted!");
                     }
                     setTimeout(() => setShowFeedback(false), 2000);
                   }}

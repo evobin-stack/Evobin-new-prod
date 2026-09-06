@@ -1,4 +1,4 @@
-import { ShoppingBag, Zap, Award, Crown } from "lucide-react";
+import { ShoppingBag, Zap, Award, Crown, Share2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -7,13 +7,21 @@ import { Progress } from "../ui/progress";
 import { useState, useEffect } from "react";
 import { rewardsApi } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { SocialShareModal } from "../SocialShareModal";
 import { toast } from "sonner";
 
 export function RewardsPage() {
   const { user, updateUser } = useAuth();
+  const { t } = useLanguage();
   const [rewardsList, setRewardsList] = useState<any[]>([]);
   const [redemptions, setRedemptions] = useState<any[]>([]);
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareData, setShareData] = useState<{ title: string; badgeName: string }>({
+    title: "E-Waste Rewards Champion",
+    badgeName: "Eco Hero"
+  });
 
   const userPoints = user?.points || 2450;
   const nextTier = 3000;
@@ -41,7 +49,7 @@ export function RewardsPage() {
     }
   };
 
-  const handleRedeem = async (rewardId: string) => {
+  const handleRedeem = async (rewardId: string, rewardTitle: string) => {
     setRedeemingId(rewardId);
     try {
       const res = await rewardsApi.redeemReward(rewardId);
@@ -53,6 +61,11 @@ export function RewardsPage() {
           updateUser({ points: Math.max(0, (user.points || 0) - ((res.data as any).pointsSpent || 500)) });
         }
         loadRewardsData();
+        setShareData({
+          title: `Redeemed ${rewardTitle} on EvoBin!`,
+          badgeName: "Reward Winner"
+        });
+        setIsShareModalOpen(true);
       } else {
         toast.error("Redemption Failed", {
           description: res.error || "Please check your points balance."
@@ -78,11 +91,27 @@ export function RewardsPage() {
     <div className="w-full">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="mb-2 text-2xl md:text-3xl font-bold">Rewards & Gamification</h1>
-          <p className="text-muted-foreground">
-            Redeem your eco-points for real vouchers, merchandise, and environmental contributions.
-          </p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="mb-2 text-2xl md:text-3xl font-bold">{t("Rewards & Gamification")}</h1>
+            <p className="text-muted-foreground">
+              {t("Redeem your eco-points for real vouchers, merchandise, and environmental contributions.")}
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              setShareData({
+                title: `I have earned ${userPoints.toLocaleString()} Eco-Points on EvoBin!`,
+                badgeName: "Eco Champion"
+              });
+              setIsShareModalOpen(true);
+            }}
+            variant="outline"
+            className="border-primary/30 text-primary hover:bg-primary/10 gap-2 self-start md:self-auto"
+          >
+            <Share2 className="h-4 w-4" />
+            {t("Share My Points")}
+          </Button>
         </div>
 
         {/* Points Banner */}
@@ -92,12 +121,12 @@ export function RewardsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Award className="h-6 w-6 text-yellow-300" />
-                  <span className="font-semibold text-lg">Eco-Points Balance</span>
+                  <span className="font-semibold text-lg">{t("Eco-Points Balance") || "Eco-Points Balance"}</span>
                 </div>
                 <div className="text-4xl md:text-5xl font-extrabold mb-2">
                   {userPoints.toLocaleString()} <span className="text-xl font-normal opacity-90">pts</span>
                 </div>
-                <p className="text-sm opacity-90">You are on track for Silver tier benefits</p>
+                <p className="text-sm opacity-90">{t("You are on track for Silver tier benefits") || "You are on track for Silver tier benefits"}</p>
               </div>
               <div className="w-full md:w-72 bg-white/10 p-4 rounded-xl backdrop-blur-sm">
                 <div className="flex justify-between text-xs font-semibold mb-2">
@@ -113,9 +142,9 @@ export function RewardsPage() {
 
         <Tabs defaultValue="catalogue" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 max-w-md">
-            <TabsTrigger value="catalogue">Reward Catalogue</TabsTrigger>
-            <TabsTrigger value="history">Redemptions</TabsTrigger>
-            <TabsTrigger value="tiers">Tier Perks</TabsTrigger>
+            <TabsTrigger value="catalogue">{t("Reward Catalogue")}</TabsTrigger>
+            <TabsTrigger value="history">{t("Redemptions")}</TabsTrigger>
+            <TabsTrigger value="tiers">{t("Tier Perks")}</TabsTrigger>
           </TabsList>
 
           {/* Catalogue */}
@@ -137,7 +166,7 @@ export function RewardsPage() {
                       <Button
                         size="sm"
                         disabled={userPoints < reward.pointsRequired || redeemingId === reward.id}
-                        onClick={() => handleRedeem(reward.id)}
+                        onClick={() => handleRedeem(reward.id, reward.title)}
                         className="bg-primary hover:bg-primary/90"
                       >
                         {redeemingId === reward.id ? "Redeeming..." : "Redeem"}
@@ -170,9 +199,25 @@ export function RewardsPage() {
                             <div className="text-xs text-muted-foreground">Code: <span className="font-mono font-bold text-foreground">{red.code}</span></div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <Badge className="bg-accent">{red.status}</Badge>
-                          <div className="text-xs text-muted-foreground mt-1">{red.pointsSpent} pts</div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <Badge className="bg-accent">{red.status}</Badge>
+                            <div className="text-xs text-muted-foreground mt-1">{red.pointsSpent} pts</div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setShareData({
+                                title: `Just redeemed ${red.rewardTitle} on EvoBin!`,
+                                badgeName: "Eco Hero"
+                              });
+                              setIsShareModalOpen(true);
+                            }}
+                            title="Share redemption"
+                          >
+                            <Share2 className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -210,6 +255,18 @@ export function RewardsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Social Share Modal */}
+      <SocialShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        title={shareData.title}
+        badgeName={shareData.badgeName}
+        stats={{
+          pointsEarned: userPoints,
+          co2SavedKg: user?.co2Saved || 85
+        }}
+      />
     </div>
   );
 }

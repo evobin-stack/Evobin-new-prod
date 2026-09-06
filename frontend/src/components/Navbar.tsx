@@ -1,4 +1,4 @@
-import { Menu, Settings, Bell, LogOut, Shield, BarChart, Award } from "lucide-react";
+import { Menu, Settings, Bell, LogOut, Shield, BarChart, Award, BookOpen } from "lucide-react";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -31,12 +31,18 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
   const { unreadCount } = useRealtime();
 
   // Public navigation (before login)
-  const publicNavItems: Array<{ label: string; value: string }> = [];
+  const publicNavItems = [
+    { label: t('nav.home'), value: "landing" },
+    { label: t('nav.education'), value: "education" },
+    { label: t('nav.events'), value: "events" },
+    { label: t('nav.aboutUs'), value: "about" },
+  ];
 
   // Role-specific navigation items
   const userNavItems = [
     { label: t('nav.dashboard'), value: "dashboard" },
     { label: t('nav.upload'), value: "upload" },
+    { label: t('nav.education'), value: "education" },
     { label: t('nav.map'), value: "map" },
     { label: t('nav.rewards'), value: "rewards" },
     { label: t('nav.community'), value: "community" },
@@ -45,21 +51,24 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
   const workerNavItems = [
     { label: t('nav.dashboard'), value: "dashboard" },
     { label: t('nav.map'), value: "map" },
-    { label: "Dispatch Hub", value: "admin" },
+    { label: t('nav.education'), value: "education" },
+    { label: t('nav.dispatchHub'), value: "admin" },
   ];
 
   const organizationNavItems = [
     { label: t('nav.dashboard'), value: "dashboard" },
     { label: t('nav.upload'), value: "upload" },
     { label: t('nav.map'), value: "map" },
+    { label: t('nav.education'), value: "education" },
     { label: t('nav.community'), value: "community" },
-    { label: "Corporate Portal", value: "admin" },
+    { label: t('nav.corporatePortal'), value: "admin" },
   ];
 
   const adminNavItems = [
     { label: t('nav.dashboard'), value: "dashboard" },
     { label: t('nav.upload'), value: "upload" },
     { label: t('nav.map'), value: "map" },
+    { label: t('nav.education'), value: "education" },
     { label: t('nav.community'), value: "community" },
     { label: t('nav.admin'), value: "admin" },
   ];
@@ -84,8 +93,8 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
   const navItems = isAuthenticated ? getAuthNavItems() : publicNavItems;
 
   const handleNavigate = (page: string) => {
-    // Allow navigation to landing page without authentication
-    if (page === "landing") {
+    // Allow public navigation without authentication
+    if (page === "landing" || page === "education" || page === "about" || page === "events") {
       onNavigate(page);
       setMobileMenuOpen(false);
       return;
@@ -121,7 +130,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
   };
 
   return (
-    <nav className="w-full bg-white dark:bg-background border-b border-border px-2 md:px-4 py-1 sticky top-0 z-50">
+    <nav className="w-full bg-white dark:bg-background border-b border-border px-2 md:px-4 py-1 sticky top-0 z-50 notranslate" translate="no">
       <div className="max-w-[1440px] mx-auto flex items-center justify-between">
         {/* Logo */}
         <button 
@@ -227,15 +236,19 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => handleNavigate("profile")}>
                     <Settings className="h-4 w-4 mr-2" />
-                    {t('nav.profile')} & Settings
+                    {t('nav.profileSettings')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleNavigate("analytics")}>
                     <BarChart className="h-4 w-4 mr-2" />
-                    {t('nav.analytics')} & Reports
+                    {t('nav.analyticsReports')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleNavigate("rewards")}>
                     <Award className="h-4 w-4 mr-2" />
                     {t('nav.rewards')} ({user.points || 0} pts)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleNavigate("education")}>
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    {t('nav.educationGuides')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleNavigate("leaderboard")}>
                     {t('nav.leaderboard')}
@@ -245,19 +258,19 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => handleNavigate("admin")}>
                         <Shield className="h-4 w-4 mr-2" />
-                        {t('nav.admin')} Panel
+                        {t('nav.adminPanel')}
                       </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                     <LogOut className="h-4 w-4 mr-2" />
-                    Logout
+                    {t('nav.logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={() => handleNavigate("login")} className="bg-primary hover:bg-primary/90">
+              <Button onClick={() => handleNavigate("login")} className="bg-primary hover:bg-primary/90 notranslate" translate="no">
                 {t('nav.signIn')}
               </Button>
             )}
@@ -265,26 +278,21 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
 
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            {/* <img
-      src="/assets/logocmr.png"
-      alt="EvoBin Logo"
-      className="w-24 sm:w-32 h-auto object-contain"
-    /> */}
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
             
-            <SheetContent side="right" className="w-[280px] sm:w-[360px] overflow-y-auto">
+            <SheetContent side="right" className="w-[280px] sm:w-[360px] overflow-y-auto notranslate" translate="no">
               <SheetHeader className="text-left">
-                <SheetTitle>Menu</SheetTitle>
+                <SheetTitle>{t('nav.navigation')}</SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-4 mt-6">
                 
                 {/* Language Switcher - Mobile */}
                 <div className="flex items-center justify-between px-2 pb-2 border-b">
-                  <span className="text-sm text-muted-foreground">Language</span>
+                  <span className="text-sm text-muted-foreground">{t('language.select')}</span>
                   <LanguageSwitcher />
                 </div>
 
@@ -301,7 +309,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
 
                 {/* Main Navigation */}
                 <div className="space-y-2">
-                  <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Navigation</h3>
+                  <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('nav.navigation')}</h3>
                   {navItems.map((item) => (
                     <button
                       key={item.value}
@@ -319,7 +327,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
 
                 {/* More Options */}
                 <div className="space-y-2 pt-2 border-t">
-                  <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Explore</h3>
+                  <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('nav.explore')}</h3>
                   {moreNavItems.map((item) => (
                       <button
                         key={item.value}
@@ -338,7 +346,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                 {/* Profile Section - Only show for authenticated users */}
                 {isAuthenticated && user && (
                   <div className="space-y-2 pt-2 border-t mt-auto">
-                    <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Account</h3>
+                    <h3 className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('nav.account')}</h3>
                     <div className="px-3 py-2.5 bg-secondary/50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
@@ -359,7 +367,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                     >
                       <div className="flex items-center gap-2">
                         <Settings className="h-4 w-4" />
-                        <span>{t('nav.profile')} & Settings</span>
+                        <span>{t('nav.profileSettings')}</span>
                       </div>
                     </button>
                     {user.role === 'admin' && (
@@ -369,7 +377,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                       >
                         <div className="flex items-center gap-2">
                           <Shield className="h-4 w-4" />
-                          <span>{t('nav.admin')} Panel</span>
+                          <span>{t('nav.adminPanel')}</span>
                         </div>
                       </button>
                     )}

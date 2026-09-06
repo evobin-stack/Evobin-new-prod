@@ -1,4 +1,4 @@
-import { Upload, Camera, CheckCircle, AlertCircle, Sparkles, MapPin, Calendar, Home, Building, Package, IndianRupee, Coins, TrendingUp, ChevronRight, ChevronLeft } from "lucide-react";
+import { Upload, Camera, CheckCircle, AlertCircle, Sparkles, MapPin, Calendar, Home, Building, Package, IndianRupee, Coins, TrendingUp, ChevronRight, ChevronLeft, ShieldAlert, Wrench, Star, Lightbulb, Compass, RefreshCw, X, Check, FlipHorizontal } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -9,10 +9,12 @@ import { Textarea } from "../ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Separator } from "../ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { ContextualHelp } from "../ContextualHelp";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { api } from "../../services/api";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 type Step = "upload" | "details" | "value" | "address" | "method" | "confirm";
 
@@ -40,10 +42,118 @@ interface Address {
 }
 
 export function UploadPage() {
+  const { t, language } = useLanguage();
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [uploadState, setUploadState] = useState<"idle" | "analyzing" | "complete">("idle");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+
+  // Camera State and Refs
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [cameraLoading, setCameraLoading] = useState(false);
+
+  // Stop camera when unmounting
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // Camera Handlers
+  const startCamera = async (mode: 'environment' | 'user' = facingMode) => {
+    setIsCameraOpen(true);
+    setCameraLoading(true);
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: mode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      setCameraLoading(false);
+    } catch (err: any) {
+      console.error("Camera access error:", err);
+      setCameraLoading(false);
+      toast.error(language === 'hi' ? "कैमरा खोलने में असमर्थ। कृपया अनुमति दें।" : language === 'te' ? "కెమెరాను తెరవలేకపోయాము. దయచేసి అనుమతిని ఇవ్వండి." : "Could not open camera. Please check permissions or upload a file.");
+      // Fallback: trigger native camera input
+      const nativeCam = document.getElementById('native-camera-input') as HTMLInputElement | null;
+      if (nativeCam) nativeCam.click();
+      setIsCameraOpen(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraOpen(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      setImagePreview(dataUrl);
+
+      // Convert dataUrl to File
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `camera_device_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          setSelectedImage(file);
+        }
+      }, 'image/jpeg', 0.9);
+
+      stopCamera();
+      toast.success(language === 'hi' ? "फ़ोटो सफलतापूर्वक ली गई!" : language === 'te' ? "ఫోటో విజయవంతంగా తీయబడింది!" : "Photo captured successfully!");
+    }
+  };
+
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    startCamera(nextMode);
+  };
+
+  const getTranslatedDeviceType = (type?: string) => {
+    if (!type) return '';
+    const norm = type.trim().toLowerCase();
+    if (norm === 'mouse') return language === 'hi' ? 'माउस' : language === 'te' ? 'మౌస్' : 'Mouse';
+    if (norm === 'keyboard') return language === 'hi' ? 'कीबोर्ड' : language === 'te' ? 'కీబోర్డ్' : 'Keyboard';
+    if (norm === 'laptop') return language === 'hi' ? 'लैपटॉप' : language === 'te' ? 'ల్యాప్‌టాప్' : 'Laptop';
+    if (norm === 'smartphone' || norm.includes('phone') || norm.includes('mobile')) return language === 'hi' ? 'स्मार्टफोन' : language === 'te' ? 'స్మార్ట్‌ఫోన్' : 'Smartphone';
+    if (norm === 'desktop') return language === 'hi' ? 'डेस्कटॉप कंप्यूटर' : language === 'te' ? 'డెస్క్‌టాప్ కంప్యూటర్' : 'Desktop';
+    if (norm === 'monitor' || norm.includes('screen')) return language === 'hi' ? 'मॉनिटर' : language === 'te' ? 'మానిటర్' : 'Monitor';
+    if (norm === 'tablet') return language === 'hi' ? 'टैबलेट' : language === 'te' ? 'టాబ్లెట్' : 'Tablet';
+    if (norm === 'printer') return language === 'hi' ? 'प्रिंटर' : language === 'te' ? 'ప్రింటర్' : 'Printer';
+    if (norm === 'tv' || norm.includes('television')) return language === 'hi' ? 'टेलीविजन (TV)' : language === 'te' ? 'టెలివిజన్ (TV)' : 'Television';
+    if (norm === 'microwave') return language === 'hi' ? 'माइक्रोवेव' : language === 'te' ? 'మైక్రోవేవ్' : 'Microwave';
+    if (norm === 'refrigerator') return language === 'hi' ? 'फ्रिज / रेफ्रिजरेटर' : language === 'te' ? 'రిఫ్రిజిరేటర్' : 'Refrigerator';
+    if (norm === 'washing machine') return language === 'hi' ? 'वाशिंग मशीन' : language === 'te' ? 'వాషింగ్ మెషీన్' : 'Washing Machine';
+    if (norm === 'air conditioner') return language === 'hi' ? 'एयर कंडीशनर (AC)' : language === 'te' ? 'ఎయిర్ కండీషనర్ (AC)' : 'Air Conditioner';
+    return type;
+  };
 
   // Form Data
   const [deviceDetails, setDeviceDetails] = useState<DeviceDetails>({
@@ -59,6 +169,14 @@ export function UploadPage() {
 
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [valueEstimation, setValueEstimation] = useState<any>(null);
+  const [recommendationsData, setRecommendationsData] = useState<any>(null);
+  const [disassemblyGuide, setDisassemblyGuide] = useState<any>(null);
+  const [isDisassemblyOpen, setIsDisassemblyOpen] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [impactScenario, setImpactScenario] = useState<"recycle" | "refurbish" | "landfill">("recycle");
+  const [recommendationRating, setRecommendationRating] = useState<number>(0);
+  const [recommendationFeedback, setRecommendationFeedback] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   
   const [address, setAddress] = useState<Address>({
     fullName: "",
@@ -198,16 +316,26 @@ export function UploadPage() {
 
 
 
-  // Calculate value estimation via backend
+  // Calculate value estimation via backend & load personalized recommendations
   const calculateValue = async () => {
     try {
-      const res = await api.device.estimateValue(deviceDetails);
-      if (res.success && res.data) {
+      const [valRes, recRes, guideRes] = await Promise.all([
+        api.device.estimateValue(deviceDetails),
+        api.device.getPersonalizedRecommendations({
+          deviceType: deviceDetails.deviceType,
+          condition: deviceDetails.condition,
+          city: address.city || "Hyderabad",
+        }),
+        api.education.getDisassemblyGuide(deviceDetails.deviceType || "Smartphone")
+      ]);
+
+      if (valRes.success && valRes.data) {
         setValueEstimation({
-          estimatedMoneyValue: res.data.estimatedMoneyValue,
-          pointsValue: res.data.pointsValue,
-          marketValue: res.data.marketValue,
-          recyclingImpact: {
+          estimatedMoneyValue: valRes.data.estimatedMoneyValue,
+          pointsValue: valRes.data.pointsValue,
+          marketValue: valRes.data.marketValue,
+          safetyAssessment: valRes.data.safetyAssessment,
+          recyclingImpact: valRes.data.recyclingImpact || {
             co2Saved: "12.5 kg",
             energySaved: "45 kWh",
             waterSaved: "120 L"
@@ -221,6 +349,14 @@ export function UploadPage() {
           recyclingImpact: { co2Saved: "12.5 kg", energySaved: "45 kWh", waterSaved: "120 L" }
         });
       }
+
+      if (recRes.success && recRes.data) {
+        setRecommendationsData(recRes.data);
+      }
+
+      if (guideRes.success && guideRes.data) {
+        setDisassemblyGuide(guideRes.data);
+      }
     } catch (e) {
       setValueEstimation({
         estimatedMoneyValue: 300,
@@ -228,6 +364,32 @@ export function UploadPage() {
         marketValue: 360,
         recyclingImpact: { co2Saved: "12.5 kg", energySaved: "45 kWh", waterSaved: "120 L" }
       });
+    }
+  };
+
+  const handleToggleStep = (index: number) => {
+    setCompletedSteps(prev =>
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+
+  const handleSubmitRecommendationFeedback = async () => {
+    if (recommendationRating === 0) {
+      toast.error("Please select a star rating first.");
+      return;
+    }
+    try {
+      await api.center.submitFeedback({
+        targetId: deviceDetails.deviceType,
+        targetType: "recommendation",
+        rating: recommendationRating,
+        feedback: recommendationFeedback
+      });
+      setFeedbackSubmitted(true);
+      toast.success("Thank you for your rating! It will help improve future AI recommendations.");
+    } catch {
+      setFeedbackSubmitted(true);
+      toast.success("Feedback submitted!");
     }
   };
 
@@ -359,9 +521,9 @@ export function UploadPage() {
         <div className="mb-6 md:mb-8">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h1 className="mb-2">Device Recycling Submission</h1>
+              <h1 className="mb-2">{t("Upload E-Waste") || "Device Recycling Submission"}</h1>
               <p className="text-muted-foreground text-sm md:text-base">
-                Upload device, get value estimation, and schedule pickup or drop-off
+                {t("upload.subtitle") || "Upload images of your electronic waste for instant identification, valuation, and pickup"}
               </p>
             </div>
             <ContextualHelp page="upload" />
@@ -392,16 +554,17 @@ export function UploadPage() {
         {/* Step 1: Upload & AI Analysis */}
         {currentStep === "upload" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="border-none shadow-md">
+            <Card className="border-none shadow-md notranslate" translate="no">
               <CardHeader className="p-4 md:p-6">
-                <CardTitle className="text-lg md:text-xl">Upload Device Image</CardTitle>
+                <CardTitle className="text-lg md:text-xl">{t('upload.title', 'Upload Device Image')}</CardTitle>
                 <CardDescription className="text-sm">
-                  Upload a clear image for AI-powered identification
+                  {t('upload.subtitle', 'Take a photo or upload an image for AI-powered identification')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 md:p-6 pt-0">
                 {uploadState === "idle" && (
                   <div>
+                    {/* Hidden Native File Inputs */}
                     <input
                       type="file"
                       id="file-upload"
@@ -409,29 +572,175 @@ export function UploadPage() {
                       className="hidden"
                       onChange={handleFileSelect}
                     />
-                    <label
-                      htmlFor="file-upload"
-                      className="border-2 border-dashed border-border rounded-lg p-6 md:p-12 text-center hover:border-primary transition-colors cursor-pointer block"
-                    >
-                      <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                        <Upload className="h-8 w-8 md:h-10 md:w-10 text-primary" />
-                      </div>
-                      <h3 className="mb-2 text-base md:text-lg">Drop your image here</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        or click to browse from your device
-                      </p>
-                      {selectedImage && (
-                        <div className="mb-4">
-                          <img src={imagePreview} alt="Preview" className="max-h-48 mx-auto rounded-lg" />
-                          <p className="text-sm text-muted-foreground mt-2">{selectedImage.name}</p>
+                    <input
+                      type="file"
+                      id="native-camera-input"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+
+                    {/* Camera Live Viewfinder Dialog */}
+                    {isCameraOpen ? (
+                      <div className="border-2 border-primary/40 bg-black/90 rounded-2xl p-4 text-center relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <div className="relative aspect-[4/3] max-h-[360px] mx-auto bg-black rounded-xl overflow-hidden flex items-center justify-center">
+                          {cameraLoading && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-20 text-white">
+                              <RefreshCw className="h-8 w-8 animate-spin mb-2 text-primary" />
+                              <p className="text-sm font-medium">{language === 'hi' ? "कैमरा लोड हो रहा है..." : language === 'te' ? "కెమెరా లోడ్ అవుతోంది..." : "Starting Camera..."}</p>
+                            </div>
+                          )}
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full h-full object-cover"
+                          />
+                          
+                          {/* Framing Target Box */}
+                          <div className="absolute inset-6 border-2 border-white/60 border-dashed rounded-lg pointer-events-none flex items-center justify-center">
+                            <span className="text-xs bg-black/60 text-white/90 px-2 py-1 rounded backdrop-blur-sm">
+                              {language === 'hi' ? "ई-कचरा डिवाइस को यहां रखें" : language === 'te' ? "ఇ-వ్యర్థ పరికరాన్ని ఇక్కడ అమర్చండి" : "Align e-waste device here"}
+                            </span>
+                          </div>
+
+                          {/* Top controls */}
+                          <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={toggleFacingMode}
+                              className="bg-black/60 hover:bg-black/80 text-white border border-white/20 h-8 px-2.5 rounded-full"
+                              title="Switch Camera"
+                            >
+                              <FlipHorizontal className="h-4 w-4 mr-1" />
+                              <span className="text-xs">{facingMode === 'environment' ? 'Rear' : 'Front'}</span>
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="destructive"
+                              onClick={stopCamera}
+                              className="h-8 w-8 rounded-full"
+                              title="Close Camera"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      )}
-                    </label>
-                    {selectedImage && (
-                      <Button onClick={handleAIAnalysis} className="w-full mt-4 bg-primary hover:bg-primary/90">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Start AI Analysis
-                      </Button>
+
+                        {/* Capture Shutter Button */}
+                        <div className="flex items-center justify-center gap-4 mt-4">
+                          <Button
+                            type="button"
+                            onClick={stopCamera}
+                            size="lg"
+                            className="bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-600 px-6 rounded-full font-medium shadow-md transition-all"
+                          >
+                            <X className="h-4 w-4 mr-2 text-zinc-300" />
+                            {language === 'hi' ? "रद्द करें (Cancel)" : language === 'te' ? "రద్దు చేయండి (Cancel)" : "Cancel"}
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={capturePhoto}
+                            size="lg"
+                            className="bg-gradient-to-r from-emerald-500 to-primary text-white hover:opacity-90 font-semibold px-7 shadow-lg shadow-primary/30 rounded-full transition-all"
+                          >
+                            <Camera className="h-5 w-5 mr-2" />
+                            {language === 'hi' ? "फ़ोटो खींचें (Capture)" : language === 'te' ? "ఫోటో తీయండి (Capture)" : "Capture Photo"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : selectedImage ? (
+                      /* Image Preview Container */
+                      <div className="border-2 border-primary/30 bg-primary/5 rounded-2xl p-6 text-center space-y-4">
+                        <div className="relative inline-block max-w-full">
+                          <img
+                            src={imagePreview}
+                            alt="Selected E-Waste"
+                            className="max-h-56 mx-auto rounded-xl shadow-md border border-border object-contain bg-background"
+                          />
+                          <Badge className="absolute top-2 right-2 bg-emerald-600 text-white shadow-sm">
+                            <Check className="h-3 w-3 mr-1" /> {language === 'hi' ? "तैयार है" : language === 'te' ? "సిద్ధంగా ఉంది" : "Ready"}
+                          </Badge>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-foreground truncate max-w-xs mx-auto">{selectedImage.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{(selectedImage.size / 1024).toFixed(1)} KB • Image Loaded</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => { setSelectedImage(null); setImagePreview(""); }}
+                            className="w-full"
+                          >
+                            <RefreshCw className="h-4 w-4 mr-1.5" />
+                            {language === 'hi' ? "दूसरी फ़ोटो चुनें" : language === 'te' ? "మరో ఫోటో ఎంచుకోండి" : "Change Photo"}
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleAIAnalysis}
+                            className="w-full bg-primary hover:bg-primary/90 text-white shadow-md font-semibold"
+                          >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            {language === 'hi' ? "AI विश्लेषण शुरू करें" : language === 'te' ? "AI విశ్లేషణ ప్రారంభించండి" : "Start AI Analysis"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Dual Options: Upload File OR Open Camera */
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Option 1: Live Camera Button */}
+                          <button
+                            type="button"
+                            onClick={() => startCamera('environment')}
+                            className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all text-center group cursor-pointer"
+                          >
+                            <div className="w-14 h-14 bg-primary text-white rounded-2xl flex items-center justify-center mb-3 shadow-md group-hover:scale-105 transition-transform">
+                              <Camera className="h-7 w-7" />
+                            </div>
+                            <span className="font-semibold text-foreground text-sm sm:text-base">
+                              {language === 'hi' ? "कैमरा खोलें" : language === 'te' ? "కెమెరాను తెరవండి" : "Open Camera"}
+                            </span>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              {language === 'hi' ? "लाइव फ़ोटो खींचें" : language === 'te' ? "లైవ్ ఫోటో తీయండి" : "Click live photo of device"}
+                            </span>
+                          </button>
+
+                          {/* Option 2: File Browser */}
+                          <label
+                            htmlFor="file-upload"
+                            className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-secondary/50 transition-all text-center cursor-pointer group"
+                          >
+                            <div className="w-14 h-14 bg-secondary text-foreground rounded-2xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                              <Upload className="h-7 w-7 text-primary" />
+                            </div>
+                            <span className="font-semibold text-foreground text-sm sm:text-base">
+                              {language === 'hi' ? "फ़ाइल अपलोड करें" : language === 'te' ? "ఫైల్ అప్‌లోడ్ చేయండి" : "Upload Image"}
+                            </span>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              {language === 'hi' ? "गैलरी या डिस्क से चुनें" : language === 'te' ? "గ్యాలరీ నుండి ఎంచుకోండి" : "Browse from device or gallery"}
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Drag & Drop Secondary Prompt */}
+                        <label
+                          htmlFor="file-upload"
+                          className="border border-border rounded-xl p-4 text-center block hover:bg-secondary/40 transition-colors cursor-pointer text-xs text-muted-foreground"
+                        >
+                          {language === 'hi' 
+                            ? "समर्थित प्रारूप: JPG, PNG, WebP (अधिकतम 10MB)" 
+                            : language === 'te' 
+                            ? "మద్దతు గల ఫార్మాట్లు: JPG, PNG, WebP (గరిష్టంగా 10MB)" 
+                            : "Supported formats: JPG, PNG, WebP (Max 10MB)"}
+                        </label>
+                      </div>
                     )}
                   </div>
                 )}
@@ -504,12 +813,12 @@ export function UploadPage() {
               </Card>
 
               {analysisResult && (
-                <Card className="border-none shadow-md">
+                <Card className="border-none shadow-md notranslate" translate="no">
                   <CardHeader className="p-4 md:p-6">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <CardTitle className="text-lg md:text-xl">AI Results</CardTitle>
-                        <CardDescription className="text-sm">Quick preview</CardDescription>
+                        <CardTitle className="text-lg md:text-xl">{t('upload.aiResults', 'AI Results')}</CardTitle>
+                        <CardDescription className="text-sm">{t('upload.quickPreview', 'Quick preview')}</CardDescription>
                       </div>
                       <Badge className="bg-accent text-xs">
                         {analysisResult.confidence 
@@ -521,20 +830,20 @@ export function UploadPage() {
                   <CardContent className="p-4 md:p-6 pt-0">
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Device Category:</span>
-                        <span className="text-sm font-semibold text-primary">{analysisResult.deviceType}</span>
+                        <span className="text-sm text-muted-foreground">{t('upload.deviceCategory', 'Device Category:')}</span>
+                        <span className="text-sm font-semibold text-primary">{getTranslatedDeviceType(analysisResult.deviceType)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Brand:</span>
-                        <span className="text-sm font-medium">{analysisResult.brand || deviceDetails.brand || "Confirm in Step 2"}</span>
+                        <span className="text-sm text-muted-foreground">{t('upload.brand', 'Brand:')}</span>
+                        <span className="text-sm font-medium">{analysisResult.brand || deviceDetails.brand || t('upload.confirmInStep2', 'Confirm in Step 2')}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Model:</span>
-                        <span className="text-sm font-medium">{analysisResult.model || deviceDetails.model || "Confirm in Step 2"}</span>
+                        <span className="text-sm text-muted-foreground">{t('upload.model', 'Model:')}</span>
+                        <span className="text-sm font-medium">{analysisResult.model || deviceDetails.model || t('upload.confirmInStep2', 'Confirm in Step 2')}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">AI Status:</span>
-                        <span className="text-sm font-medium text-accent">Analyzed & Verified</span>
+                        <span className="text-sm text-muted-foreground">{t('upload.aiStatus', 'AI Status:')}</span>
+                        <span className="text-sm font-medium text-accent">{t('upload.analyzedVerified', 'Analyzed & Verified')}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -549,19 +858,19 @@ export function UploadPage() {
           <div className="max-w-4xl mx-auto">
             <Card className="border-none shadow-md">
               <CardHeader className="p-4 md:p-6">
-                <CardTitle className="text-lg md:text-xl">Device Details</CardTitle>
+                <CardTitle className="text-lg md:text-xl">{t('upload.deviceDetails', 'Device Details')}</CardTitle>
                 <CardDescription className="text-sm">
-                  Confirm and complete the device information
+                  {t('upload.confirmSubtitle', 'Confirm and complete the device information')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 md:p-6 pt-0 space-y-4">
                 {deviceDetails.deviceType && (
-                  <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm text-primary mb-2">
+                  <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm text-primary mb-2 notranslate" translate="no">
                     <div className="flex items-center gap-2 font-medium">
                       <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span>AI Identified Device Category: <strong className="underline">{deviceDetails.deviceType}</strong></span>
+                      <span>{t('upload.aiIdentifiedCategory', 'AI Identified Device Category:')} <strong className="underline">{getTranslatedDeviceType(deviceDetails.deviceType)}</strong></span>
                     </div>
-                    <Badge variant="secondary" className="bg-primary text-white text-xs">Pre-filled by AI</Badge>
+                    <Badge variant="secondary" className="bg-primary text-white text-xs">{t('upload.prefilledByAi', 'Pre-filled by AI')}</Badge>
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -683,90 +992,302 @@ export function UploadPage() {
           </div>
         )}
 
-        {/* Step 3: Value Estimation */}
+        {/* Step 3: Value Estimation & Tailored Recommendations */}
         {currentStep === "value" && valueEstimation && (
-          <div className="max-w-4xl mx-auto">
-            <Card className="border-none shadow-md mb-6">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Value Highlights */}
+            <Card className="border-none shadow-md">
               <CardHeader className="p-4 md:p-6 text-center">
-                <CardTitle className="text-xl md:text-2xl">Estimated Value</CardTitle>
+                <CardTitle className="text-xl md:text-2xl">Estimated Value & AI Assessment</CardTitle>
                 <CardDescription className="text-sm">
-                  Based on your device details and current market rates
+                  Transparent valuation and environmental calculation for your {deviceDetails.deviceType}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 md:p-6 pt-0">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200 text-center">
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20 p-6 rounded-lg border border-green-200 dark:border-green-800 text-center">
                     <IndianRupee className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-green-700 mb-1">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-400 mb-1">
                       ₹{valueEstimation.estimatedMoneyValue}
                     </div>
-                    <div className="text-xs text-green-600">Estimated Cash Value</div>
+                    <div className="text-xs text-green-600 dark:text-green-500">Estimated Cash Value</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200 text-center">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800 text-center">
                     <Coins className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-blue-700 mb-1">
+                    <div className="text-2xl font-bold text-blue-700 dark:text-blue-400 mb-1">
                       {valueEstimation.pointsValue}
                     </div>
-                    <div className="text-xs text-blue-600">Reward Points</div>
+                    <div className="text-xs text-blue-600 dark:text-blue-500">Reward Points</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200 text-center">
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 p-6 rounded-lg border border-purple-200 dark:border-purple-800 text-center">
                     <TrendingUp className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-purple-700 mb-1">
+                    <div className="text-2xl font-bold text-purple-700 dark:text-purple-400 mb-1">
                       ₹{valueEstimation.marketValue}
                     </div>
-                    <div className="text-xs text-purple-600">Market Value</div>
-                  </div>
-                </div>
-
-                <Separator className="my-6" />
-
-                <div>
-                  <h3 className="font-semibold mb-4">Environmental Impact</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3 p-4 bg-accent/10 rounded-lg">
-                      <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center">
-                        <span className="text-white">🌱</span>
-                      </div>
-                      <div>
-                        <div className="font-medium">{valueEstimation.recyclingImpact.co2Saved}</div>
-                        <div className="text-xs text-muted-foreground">CO₂ Saved</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-4 bg-accent/10 rounded-lg">
-                      <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center">
-                        <span className="text-white">⚡</span>
-                      </div>
-                      <div>
-                        <div className="font-medium">{valueEstimation.recyclingImpact.energySaved}</div>
-                        <div className="text-xs text-muted-foreground">Energy Saved</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-4 bg-accent/10 rounded-lg">
-                      <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center">
-                        <span className="text-white">💧</span>
-                      </div>
-                      <div>
-                        <div className="font-medium">{valueEstimation.recyclingImpact.waterSaved}</div>
-                        <div className="text-xs text-muted-foreground">Water Saved</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-start gap-2 text-yellow-800 text-sm">
-                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <p>
-                      <span className="font-medium">Note:</span> Final value will be determined after physical inspection.
-                      Prices may vary based on actual device condition.
-                    </p>
+                    <div className="text-xs text-purple-600 dark:text-purple-500">Estimated Market Value</div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Feature 5: Worker Safety Automation Card */}
+            {valueEstimation.safetyAssessment && (
+              <Card className="border-none shadow-md border-l-4 border-l-orange-500 bg-orange-500/5">
+                <CardHeader className="p-4 md:p-6 pb-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                      <CardTitle className="text-base md:text-lg">Worker Safety Automation & Hazard Scan</CardTitle>
+                    </div>
+                    <Badge className={
+                      valueEstimation.safetyAssessment.hazardLevel.includes("High")
+                        ? "bg-red-600 text-white"
+                        : valueEstimation.safetyAssessment.hazardLevel.includes("Medium")
+                        ? "bg-orange-500 text-white"
+                        : "bg-green-600 text-white"
+                    }>
+                      {valueEstimation.safetyAssessment.hazardLevel}
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-xs">
+                    Automated pre-collection safety triage to protect handling workers and recycling technicians
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6 pt-2 space-y-3">
+                  <div className="p-3 bg-background/80 rounded-lg border border-orange-200 dark:border-orange-900 text-xs md:text-sm space-y-1">
+                    <div className="font-semibold text-foreground">Safety Protocol:</div>
+                    <p className="text-muted-foreground">{valueEstimation.safetyAssessment.handlingProtocol}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-xs font-semibold text-muted-foreground">Required Worker PPE:</span>
+                    {valueEstimation.safetyAssessment.requiredPPE?.map((ppe: string, idx: number) => (
+                      <Badge key={idx} variant="outline" className="text-xs bg-background">
+                        🛡️ {ppe}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Feature 1: Personalized Recommendations */}
+            <Card className="border-none shadow-md">
+              <CardHeader className="p-4 md:p-6">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Compass className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-base md:text-lg">Personalized Recycling Recommendations</CardTitle>
+                  </div>
+                  {recommendationsData?.suggestedPath && (
+                    <Badge className="bg-primary text-white text-xs">
+                      Recommended: {recommendationsData.suggestedPath}
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription className="text-xs">
+                  Tailored recycling strategy generated from device category ({deviceDetails.deviceType}), condition ({deviceDetails.condition}), and your city
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 md:p-6 pt-0 space-y-4">
+                <div className="space-y-2">
+                  {(recommendationsData?.recommendations || [
+                    `Perform NIST SP 800-88 cryptographic factory reset before handover of your ${deviceDetails.deviceType}.`,
+                    "Bundle all matching cables and power bricks to recover copper and earn bonus points.",
+                    "Remove SIM cards and SD cards; verify device battery is powered off."
+                  ]).map((rec: string, idx: number) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 bg-secondary/30 rounded-lg text-xs md:text-sm">
+                      <span className="w-5 h-5 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center flex-shrink-0 text-xs">
+                        {idx + 1}
+                      </span>
+                      <span className="text-foreground">{rec}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Safe Disassembly Guide Trigger (Feature 3) */}
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDisassemblyOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 border-primary/40 hover:bg-primary/5 text-primary"
+                  >
+                    <Wrench className="h-4 w-4" />
+                    View Safe Disassembly & Preparation Guide for {deviceDetails.deviceType}
+                  </Button>
+                </div>
+
+                {/* Nearby Specialized Facilities */}
+                {recommendationsData?.matchingFacilities && recommendationsData.matchingFacilities.length > 0 && (
+                  <div className="pt-2 space-y-2">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Specialized Matching Facilities
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {recommendationsData.matchingFacilities.map((fac: any, idx: number) => (
+                        <div key={idx} className="p-3 bg-secondary/40 rounded-lg border border-border/50 text-xs space-y-1">
+                          <div className="font-semibold text-foreground flex items-center justify-between">
+                            <span>{fac.name}</span>
+                            <span className="text-yellow-600 font-bold">⭐ {fac.rating}</span>
+                          </div>
+                          <div className="text-muted-foreground">{fac.address} • <span className="text-primary font-medium">{fac.distance}</span></div>
+                          <div className="text-[11px] text-accent font-medium">Focus: {fac.specialization}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Feature 2: Environmental Impact Assessment Comparative Simulator */}
+            <Card className="border-none shadow-md">
+              <CardHeader className="p-4 md:p-6">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-accent" />
+                    <CardTitle className="text-base md:text-lg">Environmental Impact Assessment</CardTitle>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Comparative Decision Simulator</Badge>
+                </div>
+                <CardDescription className="text-xs">
+                  Compare the planetary impact of your choice vs municipal dumping
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 md:p-6 pt-0 space-y-4">
+                {/* Choice Selector Tabs */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setImpactScenario("recycle")}
+                    className={`p-2.5 rounded-lg text-xs font-semibold text-center transition-all ${
+                      impactScenario === "recycle"
+                        ? "bg-primary text-white shadow"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    ♻️ Responsible Recycling
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImpactScenario("refurbish")}
+                    className={`p-2.5 rounded-lg text-xs font-semibold text-center transition-all ${
+                      impactScenario === "refurbish"
+                        ? "bg-accent text-white shadow"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    🌱 Refurbish & Extend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImpactScenario("landfill")}
+                    className={`p-2.5 rounded-lg text-xs font-semibold text-center transition-all ${
+                      impactScenario === "landfill"
+                        ? "bg-destructive text-white shadow"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    ⚠️ Municipal Landfill
+                  </button>
+                </div>
+
+                {/* Scenario Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                    <div className="text-xs text-muted-foreground">CO₂ Avoided</div>
+                    <div className="text-base md:text-lg font-bold text-primary mt-1">
+                      {impactScenario === "recycle" ? valueEstimation.recyclingImpact.co2Saved : (impactScenario === "refurbish" ? "24.0 kg" : "0.0 kg")}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                    <div className="text-xs text-muted-foreground">Water Conserved</div>
+                    <div className="text-base md:text-lg font-bold text-blue-600 mt-1">
+                      {impactScenario === "recycle" ? valueEstimation.recyclingImpact.waterSaved : (impactScenario === "refurbish" ? "250 L" : "0 L")}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                    <div className="text-xs text-muted-foreground">Energy Saved</div>
+                    <div className="text-base md:text-lg font-bold text-accent mt-1">
+                      {impactScenario === "recycle" ? valueEstimation.recyclingImpact.energySaved : (impactScenario === "refurbish" ? "90 kWh" : "0 kWh")}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                    <div className="text-xs text-muted-foreground">Circularity Score</div>
+                    <div className={`text-base md:text-lg font-bold mt-1 ${impactScenario === "landfill" ? "text-destructive" : "text-green-600"}`}>
+                      {impactScenario === "recycle" ? "92%" : (impactScenario === "refurbish" ? "98%" : "0% (Pollution)")}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground italic">
+                  {impactScenario === "recycle" && "✅ Responsible recycling recovers rare earth elements, gold, and copper while preventing groundwater heavy metal contamination."}
+                  {impactScenario === "refurbish" && "🌟 Refurbishment eliminates new manufacturing emissions entirely by keeping working components in circulation."}
+                  {impactScenario === "landfill" && "❌ Discarding in standard trash leaks lead, mercury, and cadmium into local soil and waterways."}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Feature 7: Recommendation Feedback & Rating System */}
+            <Card className="border-none shadow-md">
+              <CardHeader className="p-4 md:p-6 pb-2">
+                <CardTitle className="text-base">Rate Recommendation Quality</CardTitle>
+                <CardDescription className="text-xs">
+                  Help our machine learning algorithms optimize recycling recommendations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 md:p-6 pt-2 space-y-3">
+                {feedbackSubmitted ? (
+                  <div className="flex items-center gap-2 text-xs md:text-sm text-green-600 font-semibold p-3 bg-green-500/10 rounded-lg">
+                    <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                    Thank you! Your feedback has been recorded.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Rate accuracy:</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setRecommendationRating(star)}
+                            className="p-1 hover:scale-110 transition-transform"
+                          >
+                            <Star
+                              className={`h-5 w-5 ${
+                                star <= recommendationRating
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "text-muted-foreground/40"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Optional feedback on this recommendation..."
+                        value={recommendationFeedback}
+                        onChange={(e) => setRecommendationFeedback(e.target.value)}
+                        className="text-xs h-9 bg-input-background"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleSubmitRecommendationFeedback}
+                        disabled={recommendationRating === 0}
+                        className="bg-primary text-xs flex-shrink-0"
+                      >
+                        Submit
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Device Summary */}
             <Card className="border-none shadow-md">
               <CardHeader className="p-4 md:p-6">
                 <CardTitle className="text-lg">Device Summary</CardTitle>
@@ -792,6 +1313,97 @@ export function UploadPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Feature 3: Safe Disassembly & Preparation Guide Dialog Modal */}
+            <Dialog open={isDisassemblyOpen} onOpenChange={setIsDisassemblyOpen}>
+              <DialogContent className="sm:max-w-lg p-6 max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                    <Wrench className="h-5 w-5 text-primary" />
+                    {disassemblyGuide?.title || `Safe Disassembly & Preparation for ${deviceDetails.deviceType}`}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs">
+                    Estimated Time: {disassemblyGuide?.estimatedMinutes || 15} mins • Difficulty: {disassemblyGuide?.difficulty || "Medium"}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 pt-2">
+                  {/* Hazards Warning */}
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-600 dark:text-red-400 space-y-1">
+                    <div className="font-semibold flex items-center gap-1.5">
+                      <ShieldAlert className="h-4 w-4" /> Safety Hazards:
+                    </div>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {(disassemblyGuide?.hazards || [
+                        "Lithium battery puncture hazard",
+                        "Sharp metal & glass fragments"
+                      ]).map((h: string, idx: number) => (
+                        <li key={idx}>{h}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Required Tools */}
+                  {disassemblyGuide?.toolsRequired && (
+                    <div className="p-3 bg-secondary/40 rounded-lg text-xs space-y-1">
+                      <div className="font-semibold text-foreground">Recommended Tools:</div>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {disassemblyGuide.toolsRequired.map((t: string, idx: number) => (
+                          <Badge key={idx} variant="outline" className="text-xs bg-background">
+                            🔧 {t}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step by Step Checklist */}
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-foreground">Preparation Steps:</div>
+                    {(disassemblyGuide?.steps || [
+                      "Power down device completely and unplug from power outlets.",
+                      "Eject removable SIM/SD cards and battery if accessible.",
+                      "Clean surfaces and bundle charging cords.",
+                      "Place in protective packing for collection agent."
+                    ]).map((step: string, idx: number) => {
+                      const isDone = completedSteps.includes(idx);
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => handleToggleStep(idx)}
+                          className={`flex items-start gap-3 p-3 rounded-lg text-xs cursor-pointer transition-colors ${
+                            isDone ? "bg-green-500/10 border border-green-500/20" : "bg-secondary/30 hover:bg-secondary/50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isDone}
+                            onChange={() => {}}
+                            className="mt-0.5 rounded text-primary focus:ring-0"
+                          />
+                          <span className={isDone ? "line-through text-muted-foreground" : "text-foreground font-medium"}>
+                            {step}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {disassemblyGuide?.safetyTips && (
+                    <p className="text-[11px] text-muted-foreground italic border-t pt-2">
+                      💡 <strong>Tip:</strong> {disassemblyGuide.safetyTips}
+                    </p>
+                  )}
+
+                  <Button
+                    className="w-full bg-primary text-xs mt-2"
+                    onClick={() => setIsDisassemblyOpen(false)}
+                  >
+                    Done & Return to Submission
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 

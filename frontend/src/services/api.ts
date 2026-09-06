@@ -247,6 +247,24 @@ export const userApi = {
     apiCall<void>('/users/account', {
       method: 'DELETE',
     }),
+
+  /**
+   * GET /users/privacy-certificates
+   * Get data wipe and security certificates
+   */
+  getPrivacyCertificates: () =>
+    apiCall<any[]>('/users/privacy-certificates', {
+      method: 'GET',
+    }),
+
+  /**
+   * GET /users/export-data
+   * Export all user account and privacy data
+   */
+  exportData: () =>
+    apiCall<any>('/users/export-data', {
+      method: 'GET',
+    }),
 };
 
 // ========================================
@@ -307,12 +325,29 @@ export const deviceApi = {
     }),
 
   /**
+   * GET /devices/recommendations
+   * Get tailored personalized recycling recommendations
+   */
+  getPersonalizedRecommendations: (params?: { deviceType?: string; condition?: string; city?: string }) => {
+    const qs = new URLSearchParams(params as any).toString();
+    return apiCall<{
+      deviceType: string;
+      condition: string;
+      city: string;
+      recommendations: string[];
+      safetyAssessment: any;
+      matchingFacilities: any[];
+      suggestedPath: string;
+    }>(`/devices/recommendations?${qs}`, { method: 'GET' });
+  },
+
+  /**
    * GET /devices/recommendations/:id
    * Get personalized recycling recommendations
    */
   getRecommendations: (id: string) =>
     apiCall<{ recommendations: string[]; centers: CollectionCenter[] }>(
-      `/devices/${id}/recommendations`,
+      `/devices/recommendations/${id}`,
       { method: 'GET' }
     ),
 
@@ -321,7 +356,7 @@ export const deviceApi = {
    * Submit complete device recycling request with pickup/dropoff
    */
   submitDeviceRecycling: (data: any) =>
-    apiCall<{ id: string; trackingId: string; estimatedValue: number }>(
+    apiCall<{ id: string; trackingId: string; estimatedValue: number; safetyAssessment?: any }>(
       '/devices/submit',
       {
         method: 'POST',
@@ -334,7 +369,7 @@ export const deviceApi = {
    * Get value estimation for device details
    */
   estimateValue: (deviceDetails: any) =>
-    apiCall<{ estimatedMoneyValue: number; pointsValue: number; marketValue: number }>(
+    apiCall<{ estimatedMoneyValue: number; pointsValue: number; marketValue: number; safetyAssessment?: any; recyclingImpact?: any }>(
       '/devices/estimate-value',
       {
         method: 'POST',
@@ -399,6 +434,23 @@ export const centerApi = {
     apiCall<void>(`/centers/${centerId}/review`, {
       method: 'POST',
       body: JSON.stringify({ rating, comment }),
+    }),
+
+  /**
+   * POST /centers/feedback
+   * Submit rating and feedback on recommendations or facilities
+   */
+  submitFeedback: (feedbackData: {
+    targetId?: string;
+    targetType?: string;
+    rating: number;
+    accuracyRating?: number;
+    serviceRating?: number;
+    feedback?: string;
+  }) =>
+    apiCall<any>('/centers/feedback', {
+      method: 'POST',
+      body: JSON.stringify(feedbackData),
     }),
 };
 
@@ -523,8 +575,51 @@ export const analyticsApi = {
       totalCO2: number;
       totalEWaste: number;
       trees: number;
+      water: number;
       energy: number;
+      landfillAvoided: number;
+      toxicMaterialsDiverted: number;
+      preciousMetalsRecovered: any;
     }>('/analytics/impact', {
+      method: 'GET',
+    }),
+
+  /**
+   * GET /analytics/impact-assessment
+   * Calculate environmental impact assessment for different choices
+   */
+  getImpactAssessment: (deviceType: string = 'Smartphone', quantity: number = 1, choice: string = 'recycle') =>
+    apiCall<{
+      deviceType: string;
+      quantity: number;
+      choice: string;
+      weightKg: number;
+      co2SavedKg: number;
+      toxicDivertedKg: number;
+      waterSavedLiters: number;
+      energySavedKwh: number;
+      circularEfficiencyPct: number;
+      description: string;
+      comparison: any;
+    }>(`/analytics/impact-assessment?deviceType=${encodeURIComponent(deviceType)}&quantity=${quantity}&choice=${choice}`, {
+      method: 'GET',
+    }),
+
+  /**
+   * GET /analytics/carbon-tracker
+   * Get carbon footprint tracker details
+   */
+  getCarbonTracker: () =>
+    apiCall<{
+      totalCO2Saved: number;
+      monthlyTarget: number;
+      currentMonthSavings: number;
+      targetProgressPercentage: number;
+      streakDays: number;
+      rankPercentile: string;
+      historicalMilestones: any[];
+      equivalentMetrics: any;
+    }>('/analytics/carbon-tracker', {
       method: 'GET',
     }),
 
@@ -655,7 +750,25 @@ export const educationApi = {
    * Get disassembly guide for device
    */
   getDisassemblyGuide: (deviceType: string) =>
-    apiCall<DisassemblyGuide>(`/education/guides/${deviceType}`, {
+    apiCall<DisassemblyGuide | any>(`/education/guides/${deviceType}`, {
+      method: 'GET',
+    }),
+
+  /**
+   * GET /education/sustainability-tips
+   * Get device longevity and maintenance tips
+   */
+  getSustainabilityTips: () =>
+    apiCall<any[]>('/education/sustainability-tips', {
+      method: 'GET',
+    }),
+
+  /**
+   * GET /education/quiz
+   * Get e-waste interactive knowledge quiz
+   */
+  getQuiz: () =>
+    apiCall<any[]>('/education/quiz', {
       method: 'GET',
     }),
 

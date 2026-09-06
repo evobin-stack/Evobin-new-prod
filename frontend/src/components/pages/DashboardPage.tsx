@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, Recycle, Leaf, Package, MapPin, Trophy, Activity } from "lucide-react";
+import { TrendingUp, Recycle, Leaf, Package, MapPin, Trophy, Activity, Share2, Sparkles, Lightbulb, ArrowRight, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Progress } from "../ui/progress";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import { RoleBasedDashboard } from "../RoleBasedDashboard";
 import { ContextualHelp } from "../ContextualHelp";
+import { SocialShareModal } from "../SocialShareModal";
 import { useAuth } from "../../contexts/AuthContext";
-import { analyticsApi, deviceApi } from "../../services/api";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { analyticsApi, deviceApi, educationApi } from "../../services/api";
 
 interface DashboardPageProps {
   onNavigate?: (page: string) => void;
@@ -14,14 +17,20 @@ interface DashboardPageProps {
 
 export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [sustainabilityTips, setSustainabilityTips] = useState<any[]>([]);
+  const [activeTipIdx, setActiveTipIdx] = useState(0);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const [dashRes, historyRes] = await Promise.all([
+        const [dashRes, historyRes, tipsRes] = await Promise.all([
           analyticsApi.getDashboard('month'),
-          deviceApi.getHistory()
+          deviceApi.getHistory(),
+          educationApi.getSustainabilityTips()
         ]);
 
         if (dashRes.success && dashRes.data) {
@@ -30,6 +39,10 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
         if (historyRes.success && Array.isArray(historyRes.data)) {
           setRecentActivities(historyRes.data);
+        }
+
+        if (tipsRes.success && Array.isArray(tipsRes.data)) {
+          setSustainabilityTips(tipsRes.data);
         }
       } catch (err) {
         console.error("Error loading dashboard data:", err);
@@ -46,7 +59,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   const stats = [
     {
-      title: "Total E-Waste Recycled",
+      title: t("Total E-Waste Recycled"),
       value: `${totalEWaste} kg`,
       change: "+12% from last month",
       icon: <Recycle className="h-5 w-5" />,
@@ -54,7 +67,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       iconColor: "text-primary"
     },
     {
-      title: "Carbon Footprint Saved",
+      title: t("Carbon Footprint Saved"),
       value: `${co2Saved} kg CO₂`,
       change: "+8% from last month",
       icon: <Leaf className="h-5 w-5" />,
@@ -62,20 +75,20 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       iconColor: "text-accent"
     },
     {
-      title: "Total Points Earned",
+      title: t("Total Points Earned"),
       value: `${points.toLocaleString()}`,
       change: "Rank #12 globally",
       icon: <Trophy className="h-5 w-5" />,
-      iconBg: "bg-yellow-100",
-      iconColor: "text-yellow-600"
+      iconBg: "bg-yellow-100 dark:bg-yellow-900/30",
+      iconColor: "text-yellow-600 dark:text-yellow-400"
     },
     {
-      title: "Items Processed",
+      title: t("Items Processed"),
       value: `${itemsCount}`,
       change: "+5 this week",
       icon: <Package className="h-5 w-5" />,
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600"
+      iconBg: "bg-blue-100 dark:bg-blue-900/30",
+      iconColor: "text-blue-600 dark:text-blue-400"
     }
   ];
 
@@ -94,6 +107,30 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     percentage: Math.min(100, Math.round(totalEWaste))
   };
 
+  const defaultTips = [
+    {
+      title: "Optimize Battery Longevity",
+      category: "Maintenance",
+      impact: "Adds 1-2 years to device lifespan",
+      action: "Keep smartphone and laptop charge levels between 20% and 80% to minimize lithium-ion wear."
+    },
+    {
+      title: "Upgrade RAM Before Replacing",
+      category: "Hardware",
+      impact: "Saves ~180kg CO₂ equivalent",
+      action: "Upgrading memory and switching to an SSD gives laptops up to 3 extra productive years."
+    },
+    {
+      title: "Safe E-Waste Storage",
+      category: "Safety",
+      impact: "Prevents toxic leaks & worker hazards",
+      action: "Store depleted batteries in cool, dry plastic containers with terminal tapes before recycling."
+    }
+  ];
+
+  const activeTips = sustainabilityTips.length > 0 ? sustainabilityTips : defaultTips;
+  const currentTip = activeTips[activeTipIdx % activeTips.length];
+
   return (
     <div className="w-full">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
@@ -104,18 +141,65 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           </div>
         )}
 
-        {/* Header */}
-        <div className="mb-6 md:mb-8">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h1 className="mb-2 text-2xl md:text-3xl font-bold">Detailed Analytics</h1>
-              <p className="text-muted-foreground text-sm md:text-base">
-                Your complete environmental impact overview from live backend services.
-              </p>
-            </div>
+        {/* Header with Share Button */}
+        <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="mb-2 text-2xl md:text-3xl font-bold">{t("Detailed Analytics & Impact")}</h1>
+            <p className="text-muted-foreground text-sm md:text-base">
+              {t("dashboard.welcomeMessage") || "Your complete environmental footprint overview from live backend services."}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setIsShareModalOpen(true)}
+              variant="outline"
+              className="border-primary/30 text-primary hover:bg-primary/10 gap-2 shadow-sm"
+            >
+              <Share2 className="h-4 w-4" />
+              {t("Share Impact")}
+            </Button>
             <ContextualHelp page="dashboard" />
           </div>
         </div>
+
+        {/* Daily Sustainability Insight Banner */}
+        <Card className="border-none shadow-md bg-gradient-to-r from-emerald-900/10 via-primary/5 to-accent/10 border-l-4 border-l-emerald-500 mb-6 md:mb-8">
+          <CardContent className="p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Lightbulb className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                    {t(currentTip.category || "Sustainability Tip")}
+                  </Badge>
+                  <span className="text-xs font-semibold text-primary">{t(currentTip.impact)}</span>
+                </div>
+                <h4 className="font-semibold text-sm md:text-base text-foreground mb-1">{t(currentTip.title)}</h4>
+                <p className="text-xs md:text-sm text-muted-foreground">{t(currentTip.action || currentTip.tip)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTipIdx((prev) => (prev + 1) % activeTips.length)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                {t("Next Tip") || "Next Tip"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => onNavigate?.("education")}
+                className="text-xs bg-primary hover:bg-primary/90 gap-1.5"
+              >
+                {t("Learn More")}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
@@ -141,82 +225,103 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           {/* Carbon Footprint Tracker */}
           <Card className="lg:col-span-2 border-none shadow-md">
-            <CardHeader className="p-4 md:p-6">
-              <CardTitle className="text-lg md:text-xl">Carbon Footprint Tracker</CardTitle>
-              <CardDescription className="text-sm">Your monthly environmental impact goal</CardDescription>
+            <CardHeader className="p-4 md:p-6 flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-lg md:text-xl flex items-center gap-2">
+                  <Leaf className="h-5 w-5 text-accent" />
+                  {t("Carbon Footprint Tracker")}
+                </CardTitle>
+                <CardDescription className="text-sm">{t("dashboard.impactChart") || "Your monthly environmental impact goal & milestones"}</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onNavigate?.("analytics")}
+                className="text-xs gap-1.5"
+              >
+                {t("Detailed LCA") || "Detailed LCA"}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
             </CardHeader>
-            <CardContent className="p-4 md:p-6 pt-0">
+            <CardContent className="p-4 md:p-6 pt-2">
               <div className="space-y-4 md:space-y-6">
                 <div>
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                    <span className="text-xs md:text-sm text-muted-foreground">Monthly Goal Progress</span>
+                    <span className="text-xs md:text-sm text-muted-foreground">{t("Monthly Goal Progress")}</span>
                     <span className="text-xs md:text-sm font-medium">{monthlyGoal.current}kg / {monthlyGoal.target}kg</span>
                   </div>
                   <Progress value={monthlyGoal.percentage} className="h-2 md:h-3" />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {Math.max(0, monthlyGoal.target - monthlyGoal.current)}kg more to reach your goal
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center justify-between">
+                    <span>{Math.max(0, monthlyGoal.target - monthlyGoal.current)}kg {t("more to reach your goal") || "more to reach your next milestone"}</span>
+                    <span className="font-semibold text-accent">{monthlyGoal.percentage}% Completed</span>
                   </p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 md:gap-4 pt-4 border-t">
-                  <div className="text-center">
+                  <div className="text-center p-3 rounded-xl bg-secondary/30">
                     <div className="text-xl md:text-2xl font-bold text-primary">12</div>
-                    <div className="text-xs text-muted-foreground">Days Active</div>
+                    <div className="text-xs text-muted-foreground">{t("Days Active")}</div>
                   </div>
-                  <div className="text-center">
+                  <div className="text-center p-3 rounded-xl bg-secondary/30">
                     <div className="text-xl md:text-2xl font-bold text-accent">8</div>
-                    <div className="text-xs text-muted-foreground">Streak Days</div>
+                    <div className="text-xs text-muted-foreground">{t("Streak Days")}</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-xl md:text-2xl font-bold text-yellow-600">{user?.badges?.length || 3}</div>
-                    <div className="text-xs text-muted-foreground">Badges</div>
+                  <div className="text-center p-3 rounded-xl bg-secondary/30">
+                    <div className="text-xl md:text-2xl font-bold text-yellow-600 dark:text-yellow-400">{user?.badges?.length || 3}</div>
+                    <div className="text-xs text-muted-foreground">{t("Badges")}</div>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
+          {/* Quick Actions & Recommendations */}
           <Card className="border-none shadow-md">
             <CardHeader className="p-4 md:p-6">
-              <CardTitle className="text-lg md:text-xl">Quick Actions</CardTitle>
+              <CardTitle className="text-lg md:text-xl flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                {t("Tailored Next Actions")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-4 md:p-6 pt-0">
               <button 
                 onClick={() => onNavigate?.("upload")} 
-                className="w-full flex items-center gap-3 p-3 md:p-4 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 md:p-4 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors text-left group"
               >
-                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                   <Activity className="h-5 w-5 text-white" />
                 </div>
-                <div className="text-left">
-                  <div className="font-medium text-sm md:text-base">Upload E-Waste</div>
-                  <div className="text-xs text-muted-foreground">Scan new device</div>
+                <div className="text-left flex-1 min-w-0">
+                  <div className="font-medium text-sm md:text-base">{t("Upload E-Waste")}</div>
+                  <div className="text-xs text-muted-foreground truncate">{t("Instant AI scan & valuation") || "Instant AI scan & valuation"}</div>
                 </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
               </button>
               <button 
                 onClick={() => onNavigate?.("map")} 
-                className="w-full flex items-center gap-3 p-3 md:p-4 bg-accent/5 hover:bg-accent/10 rounded-lg transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 md:p-4 bg-accent/5 hover:bg-accent/10 rounded-lg transition-colors text-left group"
               >
-                <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                   <MapPin className="h-5 w-5 text-white" />
                 </div>
-                <div className="text-left">
-                  <div className="font-medium text-sm md:text-base">Find Centers</div>
-                  <div className="text-xs text-muted-foreground">Locate nearby</div>
+                <div className="text-left flex-1 min-w-0">
+                  <div className="font-medium text-sm md:text-base">{t("Find Certified Centers")}</div>
+                  <div className="text-xs text-muted-foreground truncate">{t("Locate verified nearby dropoffs") || "Locate verified nearby dropoffs"}</div>
                 </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
               </button>
               <button 
-                onClick={() => onNavigate?.("leaderboard")} 
-                className="w-full flex items-center gap-3 p-3 md:p-4 bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded-lg transition-colors text-left"
+                onClick={() => onNavigate?.("education")} 
+                className="w-full flex items-center gap-3 p-3 md:p-4 bg-blue-500/5 hover:bg-blue-500/10 rounded-lg transition-colors text-left group"
               >
-                <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Trophy className="h-5 w-5 text-white" />
+                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <ShieldCheck className="h-5 w-5 text-white" />
                 </div>
-                <div className="text-left">
-                  <div className="font-medium text-sm md:text-base">View Leaderboard</div>
-                  <div className="text-xs text-muted-foreground">Check ranking</div>
+                <div className="text-left flex-1 min-w-0">
+                  <div className="font-medium text-sm md:text-base">{t("Safe Disassembly Guides")}</div>
+                  <div className="text-xs text-muted-foreground truncate">{t("Prevent battery and toxic hazards") || "Prevent battery and toxic hazards"}</div>
                 </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
               </button>
             </CardContent>
           </Card>
@@ -293,6 +398,20 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           </Card>
         </div>
       </div>
+
+      {/* Social Share Modal */}
+      <SocialShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        title="Share My Environmental Impact"
+        badgeName="Planet Saver"
+        stats={{
+          recycledKg: totalEWaste,
+          co2SavedKg: co2Saved,
+          pointsEarned: points
+        }}
+        shareUrl={window.location.origin}
+      />
     </div>
   );
 }

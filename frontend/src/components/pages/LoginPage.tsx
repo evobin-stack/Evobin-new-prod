@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Alert, AlertDescription } from "../ui/alert";
 import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { toast } from "sonner";
 
 interface LoginPageProps {
@@ -15,6 +16,7 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onNavigate }: LoginPageProps) {
+  const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
@@ -124,12 +126,11 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
         {/* Right Side - Form */}
         <Card className="shadow-xl border-none">
           <CardHeader className="text-center">
-            <CardTitle>{isLogin ? "Welcome Back" : "Create Account"}</CardTitle>
+            <CardTitle>{isLogin ? t("auth.welcomeBack") || "Welcome Back" : t("auth.createAccount") || "Create Account"}</CardTitle>
             <CardDescription>
               {isLogin
-                ? "Enter your credentials to access your account"
-                : "Sign up to start your sustainability journey"
-              }
+                ? t("auth.signInSubtitle") || "Enter your credentials to access your account"
+                : t("auth.signUpSubtitle") || "Join our community and start making a difference"}
             </CardDescription>
           </CardHeader>
           <CardContent>
