@@ -10,7 +10,29 @@
     <div id="google_translate_element" style="display:none"></div>
     <div id="root"></div>
     <script type="text/javascript">
+      function clearGoogTransCookies() {
+        var domains = [
+          window.location.hostname,
+          '.' + window.location.hostname,
+          window.location.hostname.replace(/^www\./, ''),
+          '.' + window.location.hostname.replace(/^www\./, ''),
+          ''
+        ];
+        var paths = ['/', ''];
+        domains.forEach(function(d) {
+          paths.forEach(function(p) {
+            document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC;' + (p ? ' path=' + p + ';' : '') + (d ? ' domain=' + d + ';' : '');
+            document.cookie = 'googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC;' + (p ? ' path=' + p + ';' : '') + (d ? ' domain=' + d + ';' : '');
+          });
+        });
+      }
+
       function googleTranslateElementInit() {
+        var pref = localStorage.getItem('preferredLanguage');
+        if (pref === 'en' || !pref) {
+          clearGoogTransCookies();
+          return;
+        }
         if (window.google && window.google.translate) {
           new window.google.translate.TranslateElement({
             pageLanguage: 'en',

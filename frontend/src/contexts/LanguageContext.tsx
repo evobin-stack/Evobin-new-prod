@@ -1950,21 +1950,30 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     localStorage.setItem('preferredLanguage', lang);
     
     // Set proper Google Translate cookies
+    const hostname = window.location.hostname;
+    const rootDomain = hostname.replace(/^www\./, '');
+    const domains = [hostname, '.' + hostname, rootDomain, '.' + rootDomain, ''];
+    const paths = ['/', ''];
+
     if (lang === 'en') {
-      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname + ';';
-      document.cookie = 'googtrans=/en/en; path=/;';
-      document.cookie = 'googtrans=/en/en; path=/; domain=' + window.location.hostname + ';';
+      domains.forEach(d => {
+        paths.forEach(p => {
+          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; ${p ? `path=${p};` : ''} ${d ? `domain=${d};` : ''}`;
+          document.cookie = `googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; ${p ? `path=${p};` : ''} ${d ? `domain=${d};` : ''}`;
+        });
+      });
     } else {
-      document.cookie = `googtrans=/en/${lang}; path=/;`;
-      document.cookie = `googtrans=/en/${lang}; path=/; domain=${window.location.hostname};`;
-      document.cookie = `googtrans=/en/${lang}; path=/; domain=.${window.location.hostname};`;
+      domains.forEach(d => {
+        paths.forEach(p => {
+          document.cookie = `googtrans=/en/${lang}; ${p ? `path=${p};` : ''} ${d ? `domain=${d};` : ''}`;
+        });
+      });
     }
 
     // Update HTML lang attribute for accessibility
     document.documentElement.lang = lang;
     
-    // Auto-reload so Google Translate runs completely on init without requiring manual user refresh
+    // Auto-reload so Google Translate runs or unloads cleanly without partial mixups
     window.location.reload();
   };
 
